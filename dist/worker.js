@@ -88,23 +88,24 @@ class Worker {
             return;
         }
         await this._currentJob.setStateToActive();
+        let result;
         try {
-            const result = await processor(this._currentJob);
-            // 実行中じゃなければシャットダウンが進行中なので、処理を中断する
-            if (this._isRunning === false) {
-                this._currentJob = null;
-                return;
-            }
-            // ジョブが削除されていれば、処理を中断する
-            if (await this._currentJob.isExist() === false) {
-                this._currentJob = null;
-                return;
-            }
-            await this._currentJob.setStateToComplete(result);
+            result = await processor(this._currentJob);
         }
         catch (error) {
             await this._currentJob.setStateToFailure(error);
         }
+        // 実行中じゃなければシャットダウンが進行中なので、処理を中断する
+        if (this._isRunning === false) {
+            this._currentJob = null;
+            return;
+        }
+        // ジョブが削除されていれば、処理を中断する
+        if (await this._currentJob.isExist() === false) {
+            this._currentJob = null;
+            return;
+        }
+        await this._currentJob.setStateToComplete(result);
         this._currentJob = null;
     }
 }

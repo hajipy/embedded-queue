@@ -1,3 +1,4 @@
+/// <reference types="node" />
 import { EventEmitter } from "events";
 import { Job } from "./job";
 import { JobRepository } from "./jobRepository";
