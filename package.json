@@ -24,5 +24,13 @@
   },
   "scripts": {
     "prepare": "tsc"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hajipy/embedded-queue.git"
+  },
+  "bugs": {
+    "url": "https://github.com/hajipy/embedded-queue/issues"
+  },
+  "homepage": "https://github.com/hajipy/embedded-queue#readme"
 }
