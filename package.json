@@ -18,10 +18,10 @@
     "uuid": "^3.2.1"
   },
   "devDependencies": {
-    "@types/nedb": "^1.8.5",
-    "@types/node": "^11.13.8",
-    "@types/uuid": "^3.4.3",
-    "typescript": "^2.7.2"
+    "@types/nedb": "^1.8.7",
+    "@types/node": "*",
+    "@types/uuid": "^3.4.4",
+    "typescript": "^2.9.2"
   },
   "scripts": {
     "prepare": "tsc"
