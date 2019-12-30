@@ -11,6 +11,11 @@ const jobRepository_1 = require("./jobRepository");
 const priority_1 = require("./priority");
 const worker_1 = require("./worker");
 class Queue extends events_1.EventEmitter {
+    constructor(dbOptions) {
+        super();
+        this.repository = new jobRepository_1.JobRepository(dbOptions);
+        this._workers = [];
+    }
     static async createQueue(dbOptions) {
         const queue = new Queue(dbOptions);
         await queue.repository.init();
@@ -31,11 +36,6 @@ class Queue extends events_1.EventEmitter {
     // tslint:disable:variable-name
     get workers() {
         return [...this._workers];
-    }
-    constructor(dbOptions) {
-        super();
-        this.repository = new jobRepository_1.JobRepository(dbOptions);
-        this._workers = [];
     }
     createJob(data) {
         const now = new Date();
