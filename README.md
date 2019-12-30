@@ -1,5 +1,5 @@
 # embedded-queue
-embedded-queue is job/message queue for Node.js and Electron. It is not need other process for persistence data, like Redis, MySQL, and so on. It persitences data by using [nedb](https://github.com/louischatriot/nedb) embedded database.
+embedded-queue is job/message queue for Node.js and Electron. It is not required other process for persistence data, like Redis, MySQL, and so on. It persistence data by using [nedb](https://github.com/louischatriot/nedb) embedded database.
 
 ## Installation
 ```sh
@@ -18,14 +18,10 @@ const EmbeddedQueue = require("embedded-queue");
     // argument path through nedb
     const queue = await EmbeddedQueue.Queue.createQueue({ inMemoryOnly: true });
 
-    // set up job processor for "type1", concurrency is 1
+    // set up job processor for "adder" type, concurrency is 1
     queue.process(
-        "type1",
-        (job) => {
-            return new Promise((resolve) => {
-                resolve(job.data.a + job.data.b);
-            })
-        },
+        "adder",
+        async (job) => job.data.a + job.data.b,
         1
     );
 
@@ -41,9 +37,9 @@ const EmbeddedQueue = require("embedded-queue");
         }
     );
 
-    // create "type1" job
+    // create "adder" type job
     await queue.createJob({
-        type: "type1",
+        type: "adder",
         data: { a: 1, b: 2 },
     });
 
@@ -52,26 +48,24 @@ const EmbeddedQueue = require("embedded-queue");
 })();
 ```
 
-## API
-- Create queue
-- Set job processor
-- Set job event handler
-- Create job
-- Shutdown queue
-- Queue API
-- Job API
+## Basic
+- Create Queue
+- Set Job Processor
+- Set Job Event Handler
+- Create Job
+- Shutdown Queue
 
-### Create queue
+### Create Queue
 You can create a new queue by calling `Queue.createQueue(dbOptions)`. `dbOptions` argument is pass to nedb database constructor. for more information see [nedb documents](https://github.com/louischatriot/nedb#creatingloading-a-database). `Queue.createQueue` returns a `Promise`, `await` it for initialize finish.
 
-### Set job processor
+### Set Job Processor
 Job processor is a function that process single job. It is called by `Worker` and pass `Job` argument, it must return `Promise<any>`. It runs any process(calculation, network access, etc...) and call `resolve(result)`. Required data can pass by `Job.data` object. Also you can call `Job.setProgress` for notify progress, `Job.addLog` for logging.
 You can set any number of job processors, each processor is associate to single job `type`, it processes only jobs of that `type`.
 If you want to need process many jobs that same `type` in concurrency, you can launch any number of job processor of same `type`.
 
 Finally, `queue.process` method signature is `quque.process(type, processor, concurrency)`.
 
-### Set job event handler
+### Set Job Event Handler
 `Queue` implements `EventEmitter`, when job is completed or job is failed, job progress updated, etc..., you can observe these events by set handlers `Queue.on(Event, Handler)`.
 
 | Event            | Description                                      | Handler Signature         |
@@ -86,9 +80,9 @@ Finally, `queue.process` method signature is `quque.process(type, processor, con
 | `Event.Log`      | Job log add                                      | `(job) => void`           |
 | `Event.Priority` | Job priority change                              | `(job) => void`           |
 
-`Event.Complete` event handler is most used, it can receive job result from job processor.  
+`Event.Complete` event handler is most commonly used, it can receive job result from job processor.  
 
-### Create job
+### Create Job
 You can create a job by calling `Queue.createJob(data)`. `data` argument is object that contains `type`, `priority` and `data`.
 
 | Field      | Type       | Description |
@@ -97,13 +91,15 @@ You can create a job by calling `Queue.createJob(data)`. `data` argument is obje
 | `priority` | `Priority` | `Queue` picks up job that has high priority first |
 | `data`     | `object`   | Data that is used by job processor, you can set any data |
 
-`Queue.createJob(data)` returns new `Job` object, this job is associated to `Queue`, but not saved. You may call `Job` instance method for setup job, after that you have to call `Job.save() => Promise<Job>` for save job.
+`Queue.createJob(data)` returns `Promise<Job>` object, this job is associated to `Queue`.
 
 `Priority` is any of `Priority.LOW`, `Priority.NORMAL`, `Priority.MEDIUM`, `Priority.HIGH`, `Priority.CRITICAL`.
 
-### Shutdown queue
+### Shutdown Queue
 If you want stop processing jobs, you have to call `Queue.shutdown(timeoutMilliseconds, type) => Promise<void>`. `Queue` starts to stop running job processor, and all job processors are stopped, Promise is resolved. If stopping job processor takes long time, after `timeoutMilliseconds` `Queue` terminate job processor, and set `Job.state` to `State.FAILURE`.  
-You can stop specified job processor by passing second argument `type`. If `undefined` is passed, stop all job processor. 
+You can stop specified type job processor by passing second argument `type`. If `undefined` is passed, stop all type job processors. 
+
+## API
 
 ### Queue API
 - `createJob(data)`: Create a new `Job`, see above for usage.
