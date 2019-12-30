@@ -37,9 +37,9 @@ class Queue extends events_1.EventEmitter {
     get workers() {
         return [...this._workers];
     }
-    createJob(data) {
+    async createJob(data) {
         const now = new Date();
-        return new job_1.Job(Object.assign({}, data, {
+        const job = new job_1.Job(Object.assign({}, data, {
             queue: this,
             id: v4_1.default(),
             createdAt: now,
@@ -47,6 +47,7 @@ class Queue extends events_1.EventEmitter {
             logs: [],
             saved: false,
         }));
+        return await job.save();
     }
     process(type, processor, concurrency) {
         for (let i = 0; i < concurrency; i++) {

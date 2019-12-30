@@ -42,12 +42,10 @@ const EmbeddedQueue = require("embedded-queue");
     );
 
     // create "type1" job
-    const job1 = queue.createJob({
+    await queue.createJob({
         type: "type1",
         data: { a: 1, b: 2 },
     });
-    // job need to save
-    await job1.save();
 
     // shutdown queue
     setTimeout(async () => { await queue.shutdown(1000); }, 1);
