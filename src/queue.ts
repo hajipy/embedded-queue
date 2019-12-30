@@ -57,10 +57,10 @@ export class Queue extends EventEmitter {
         this._workers = [];
     }
 
-    public createJob(data: CreateJobData) {
+    public async createJob(data: CreateJobData): Promise<Job> {
         const now = new Date();
 
-        return new Job(
+        const job = new Job(
             Object.assign(
                 {},
                 data,
@@ -74,6 +74,8 @@ export class Queue extends EventEmitter {
                 }
             )
         );
+
+        return await job.save();
     }
 
     public process(type: string, processor: Processor, concurrency: number) {

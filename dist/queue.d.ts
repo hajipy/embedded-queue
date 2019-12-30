@@ -18,7 +18,7 @@ export declare class Queue extends EventEmitter {
     protected _workers: Worker[];
     get workers(): Worker[];
     protected constructor(dbOptions?: any);
-    createJob(data: CreateJobData): Job;
+    createJob(data: CreateJobData): Promise<Job>;
     process(type: string, processor: Processor, concurrency: number): void;
     shutdown(timeoutMilliseconds: number, type?: string | undefined): Promise<void>;
     findJob(id: string): Promise<Job | null>;
