@@ -14,8 +14,8 @@ export declare class Worker {
     protected shutdownInfo: ShutdownInfo | null;
     protected _isRunning: boolean;
     protected _currentJob: Job | null;
-    readonly isRunning: boolean;
-    readonly currentJob: Job | null;
+    get isRunning(): boolean;
+    get currentJob(): Job | null;
     constructor(data: WorkerConstructorData);
     start(processor: Processor): void;
     shutdown(timeoutMilliseconds: number): Promise<void>;

@@ -21,7 +21,7 @@
     "@types/nedb": "^1.8.7",
     "@types/node": "*",
     "@types/uuid": "^3.4.4",
-    "typescript": "3.4.5"
+    "typescript": "3.7.x"
   },
   "scripts": {
     "prepare": "tsc"

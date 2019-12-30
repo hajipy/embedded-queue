@@ -16,7 +16,7 @@ export declare class Queue extends EventEmitter {
     protected static sanitizePriority(priority: number): Priority;
     protected readonly repository: JobRepository;
     protected _workers: Worker[];
-    readonly workers: Worker[];
+    get workers(): Worker[];
     protected constructor(dbOptions?: any);
     createJob(data: CreateJobData): Job;
     process(type: string, processor: Processor, concurrency: number): void;
