@@ -131,6 +131,8 @@ export class Worker {
         }
         catch (error) {
             await this._currentJob.setStateToFailure(error);
+            this._currentJob = null;
+            return;
         }
 
         // 実行中じゃなければシャットダウンが進行中なので、処理を中断する
