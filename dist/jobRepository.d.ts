@@ -1,11 +1,11 @@
-import DataStore from "nedb";
+import DataStore, { DataStoreOptions } from "nedb";
 import { Job } from "./job";
 import { State } from "./state";
-interface INeDbJob {
+interface NeDbJob {
     _id: string;
     type: string;
     priority: number;
-    data?: any;
+    data?: unknown;
     createdAt: Date;
     updatedAt: Date;
     startedAt?: Date;
@@ -16,14 +16,21 @@ interface INeDbJob {
     progress?: number;
     logs: string[];
 }
+export declare type DbOptions = DataStoreOptions;
+interface WaitingWorkerRequest {
+    resolve: (value: NeDbJob) => void;
+    reject: (error: Error) => void;
+}
 export declare class JobRepository {
     protected readonly db: DataStore;
-    protected waitingWorkers: any;
-    constructor(dbOptions?: any);
+    protected waitingWorker: {
+        [type: string]: WaitingWorkerRequest[];
+    };
+    constructor(dbOptions?: DbOptions);
     init(): Promise<void>;
-    listJobs(state?: State): Promise<INeDbJob[]>;
-    findJob(id: string): Promise<INeDbJob>;
-    findInactiveJobByType(type: string): Promise<INeDbJob>;
+    listJobs(state?: State): Promise<NeDbJob[]>;
+    findJob(id: string): Promise<NeDbJob>;
+    findInactiveJobByType(type: string): Promise<NeDbJob>;
     isExistJob(job: Job): Promise<boolean>;
     addJob(job: Job): Promise<void>;
     updateJob(job: Job): Promise<void>;

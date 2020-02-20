@@ -100,9 +100,11 @@ class JobRepository {
                     return;
                 }
                 const type = job.type;
-                if (this.waitingWorker[type] !== undefined && this.waitingWorker[type].length > 0) {
+                if (this.waitingWorker[type] !== undefined) {
                     const waitingHead = this.waitingWorker[type].shift();
-                    process.nextTick(() => { waitingHead.resolve(doc); });
+                    if (waitingHead !== undefined) {
+                        process.nextTick(() => { waitingHead.resolve(doc); });
+                    }
                 }
                 resolve();
             });

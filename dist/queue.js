@@ -59,20 +59,17 @@ class Queue extends events_1.EventEmitter {
             this._workers.push(worker);
         }
     }
-    shutdown(timeoutMilliseconds, type) {
-        return new Promise(async (resolve) => {
-            const shutdownWorkers = [];
-            for (const worker of this._workers) {
-                if (type !== undefined && worker.type !== type) {
-                    continue;
-                }
-                await worker.shutdown(timeoutMilliseconds);
-                shutdownWorkers.push(worker);
+    async shutdown(timeoutMilliseconds, type) {
+        const shutdownWorkers = [];
+        for (const worker of this._workers) {
+            if (type !== undefined && worker.type !== type) {
+                continue;
             }
-            this._workers = this._workers.filter((worker) => {
-                return shutdownWorkers.includes(worker) === false;
-            });
-            resolve();
+            await worker.shutdown(timeoutMilliseconds);
+            shutdownWorkers.push(worker);
+        }
+        this._workers = this._workers.filter((worker) => {
+            return shutdownWorkers.includes(worker) === false;
         });
     }
     async findJob(id) {
