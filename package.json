@@ -27,7 +27,8 @@
     "typescript": "3.7.x"
   },
   "scripts": {
-    "prepare": "tsc"
+    "prepare": "tsc",
+    "lint": "eslint . --ext .ts"
   },
   "repository": {
     "type": "git",
