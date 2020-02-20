@@ -7,7 +7,7 @@ interface NeDbJob {
     _id: string;
     type: string;
     priority: number;
-    data?: any;
+    data?: unknown;
     createdAt: Date;
     updatedAt: Date;
     startedAt?: Date;

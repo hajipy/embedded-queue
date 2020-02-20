@@ -8,7 +8,7 @@ export interface JobConstructorData {
     id: string;
     type: string;
     priority?: Priority;
-    data?: any;
+    data?: unknown;
     createdAt: Date;
     updatedAt: Date;
     startedAt?: Date;
@@ -22,7 +22,7 @@ export interface JobConstructorData {
 export class Job {
     public readonly id: string;
     public readonly type: string;
-    public readonly data: any | undefined;
+    public readonly data: unknown | undefined;
 
     protected readonly queue: Queue;
 
@@ -167,7 +167,7 @@ export class Job {
     }
 
     /** @package */
-    public async setStateToComplete(result?: any): Promise<void> {
+    public async setStateToComplete(result?: unknown): Promise<void> {
         this._state = State.COMPLETE;
 
         const now = new Date();
