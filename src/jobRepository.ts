@@ -3,7 +3,7 @@ import DataStore from "nedb";
 import { Job } from "./job";
 import { State } from "./state";
 
-interface INeDbJob {
+interface NeDbJob {
     _id: string;
     type: string;
     priority: number;
@@ -43,8 +43,8 @@ export class JobRepository {
         });
     }
 
-    public listJobs(state?: State): Promise<INeDbJob[]> {
-        return new Promise<INeDbJob[]>((resolve, reject) => {
+    public listJobs(state?: State): Promise<NeDbJob[]> {
+        return new Promise<NeDbJob[]>((resolve, reject) => {
             const query = (state === undefined) ? {} : { state };
 
             this.db.find(query)
@@ -60,8 +60,8 @@ export class JobRepository {
         });
     }
 
-    public findJob(id: string): Promise<INeDbJob> {
-        return new Promise<INeDbJob>((resolve, reject) => {
+    public findJob(id: string): Promise<NeDbJob> {
+        return new Promise<NeDbJob>((resolve, reject) => {
             this.db.findOne({ _id: id }, (error, doc: any) => {
                     if (error !== null) {
                         reject(error);
@@ -73,8 +73,8 @@ export class JobRepository {
         });
     }
 
-    public findInactiveJobByType(type: string): Promise<INeDbJob> {
-        return new Promise<INeDbJob>((resolve, reject) => {
+    public findInactiveJobByType(type: string): Promise<NeDbJob> {
+        return new Promise<NeDbJob>((resolve, reject) => {
             if (this.waitingWorkers[type] !== undefined && this.waitingWorkers[type].length > 0) {
                 this.waitingWorkers[type].push({ resolve, reject });
             }

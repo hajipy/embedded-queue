@@ -78,7 +78,7 @@ export class Queue extends EventEmitter {
         return await job.save();
     }
 
-    public process(type: string, processor: Processor, concurrency: number) {
+    public process(type: string, processor: Processor, concurrency: number): void {
         for (let i = 0; i < concurrency; i++) {
             const worker = new Worker({
                 type,
@@ -91,28 +91,24 @@ export class Queue extends EventEmitter {
         }
     }
 
-    public shutdown(timeoutMilliseconds: number, type?: string | undefined): Promise<void> {
-        return new Promise<void>(async (resolve) => {
-            const shutdownWorkers: Worker[] = [];
+    public async shutdown(timeoutMilliseconds: number, type?: string | undefined): Promise<void> {
+        const shutdownWorkers: Worker[] = [];
 
-            for (const worker of this._workers) {
-                if (type !== undefined && worker.type !== type) {
-                    continue;
-                }
-
-                await worker.shutdown(timeoutMilliseconds);
-
-                shutdownWorkers.push(worker);
+        for (const worker of this._workers) {
+            if (type !== undefined && worker.type !== type) {
+                continue;
             }
 
-            this._workers = this._workers.filter(
-                (worker) => {
-                    return shutdownWorkers.includes(worker) === false;
-                }
-            );
+            await worker.shutdown(timeoutMilliseconds);
 
-            resolve();
-        });
+            shutdownWorkers.push(worker);
+        }
+
+        this._workers = this._workers.filter(
+            (worker) => {
+                return shutdownWorkers.includes(worker) === false;
+            }
+        );
     }
 
     public async findJob(id: string): Promise<Job | null> {
