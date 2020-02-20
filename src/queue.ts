@@ -4,7 +4,7 @@ import uuid from "uuid/v4";
 
 import { Event } from "./event";
 import { Job } from "./job";
-import { JobRepository } from "./jobRepository";
+import { DbOptions, JobRepository } from "./jobRepository";
 import { Priority } from "./priority";
 import { State } from "./state";
 import { Worker } from "./worker";
@@ -18,7 +18,7 @@ export interface CreateJobData {
 export type Processor = (job: Job) => Promise<unknown>;
 
 export class Queue extends EventEmitter {
-    public static async createQueue(dbOptions?: any): Promise<Queue> {
+    public static async createQueue(dbOptions?: DbOptions): Promise<Queue> {
         const queue = new Queue(dbOptions);
 
         await queue.repository.init();
@@ -50,7 +50,7 @@ export class Queue extends EventEmitter {
         return [...this._workers];
     }
 
-    protected constructor(dbOptions?: any) {
+    protected constructor(dbOptions?: DbOptions) {
         super();
 
         this.repository = new JobRepository(dbOptions);

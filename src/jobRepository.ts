@@ -1,4 +1,4 @@
-import DataStore from "nedb";
+import DataStore, { DataStoreOptions } from "nedb";
 
 import { Job } from "./job";
 import { State } from "./state";
@@ -19,11 +19,13 @@ interface NeDbJob {
     logs: string[];
 }
 
+export type DbOptions = DataStoreOptions;
+
 export class JobRepository {
     protected readonly db: DataStore;
     protected waitingWorkers: any;
 
-    public constructor(dbOptions: any = {}) {
+    public constructor(dbOptions: DbOptions = {}) {
         this.db = new DataStore(
             Object.assign({}, dbOptions, { timestampData: true })
         );
