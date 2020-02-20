@@ -8,7 +8,7 @@ const state_1 = require("./state");
 class JobRepository {
     constructor(dbOptions = {}) {
         this.db = new nedb_1.default(Object.assign({}, dbOptions, { timestampData: true }));
-        this.waitingWorkers = {};
+        this.waitingWorker = {};
     }
     init() {
         return new Promise((resolve, reject) => {
@@ -48,8 +48,8 @@ class JobRepository {
     }
     findInactiveJobByType(type) {
         return new Promise((resolve, reject) => {
-            if (this.waitingWorkers[type] !== undefined && this.waitingWorkers[type].length > 0) {
-                this.waitingWorkers[type].push({ resolve, reject });
+            if (this.waitingWorker[type] !== undefined && this.waitingWorker[type].length > 0) {
+                this.waitingWorker[type].push({ resolve, reject });
             }
             this.db.find({ type, state: state_1.State.INACTIVE })
                 .sort({ priority: -1, createdAt: 1 })
@@ -61,10 +61,10 @@ class JobRepository {
                 }
                 // 該当typeのジョブがない場合、新たに作成されるまで待機する
                 if (docs.length === 0) {
-                    if (this.waitingWorkers[type] === undefined) {
-                        this.waitingWorkers[type] = [];
+                    if (this.waitingWorker[type] === undefined) {
+                        this.waitingWorker[type] = [];
                     }
-                    this.waitingWorkers[type].push({ resolve, reject });
+                    this.waitingWorker[type].push({ resolve, reject });
                     return;
                 }
                 resolve(docs[0]);
@@ -100,8 +100,8 @@ class JobRepository {
                     return;
                 }
                 const type = job.type;
-                if (this.waitingWorkers[type] !== undefined && this.waitingWorkers[type].length > 0) {
-                    const waitingHead = this.waitingWorkers[type].shift();
+                if (this.waitingWorker[type] !== undefined && this.waitingWorker[type].length > 0) {
+                    const waitingHead = this.waitingWorker[type].shift();
                     process.nextTick(() => { waitingHead.resolve(doc); });
                 }
                 resolve();

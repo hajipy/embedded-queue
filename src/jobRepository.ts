@@ -21,15 +21,20 @@ interface NeDbJob {
 
 export type DbOptions = DataStoreOptions;
 
+interface WaitingWorkerRequest {
+    resolve: (value: NeDbJob) => void;
+    reject: (error: Error) => void;
+}
+
 export class JobRepository {
     protected readonly db: DataStore;
-    protected waitingWorkers: any;
+    protected waitingWorker: { [type: string]: WaitingWorkerRequest[] };
 
     public constructor(dbOptions: DbOptions = {}) {
         this.db = new DataStore(
             Object.assign({}, dbOptions, { timestampData: true })
         );
-        this.waitingWorkers = {};
+        this.waitingWorker = {};
     }
 
     public init(): Promise<void> {
@@ -77,8 +82,8 @@ export class JobRepository {
 
     public findInactiveJobByType(type: string): Promise<NeDbJob> {
         return new Promise<NeDbJob>((resolve, reject) => {
-            if (this.waitingWorkers[type] !== undefined && this.waitingWorkers[type].length > 0) {
-                this.waitingWorkers[type].push({ resolve, reject });
+            if (this.waitingWorker[type] !== undefined && this.waitingWorker[type].length > 0) {
+                this.waitingWorker[type].push({ resolve, reject });
             }
 
             this.db.find({ type, state: State.INACTIVE })
@@ -92,11 +97,11 @@ export class JobRepository {
 
                     // 該当typeのジョブがない場合、新たに作成されるまで待機する
                     if (docs.length === 0) {
-                        if (this.waitingWorkers[type] === undefined) {
-                            this.waitingWorkers[type] = [];
+                        if (this.waitingWorker[type] === undefined) {
+                            this.waitingWorker[type] = [];
                         }
 
-                        this.waitingWorkers[type].push({ resolve, reject });
+                        this.waitingWorker[type].push({ resolve, reject });
                         return;
                     }
 
@@ -138,10 +143,12 @@ export class JobRepository {
                 }
 
                 const type = job.type;
-                if (this.waitingWorkers[type] !== undefined && this.waitingWorkers[type].length > 0) {
-                    const waitingHead = this.waitingWorkers[type].shift();
+                if (this.waitingWorker[type] !== undefined) {
+                    const waitingHead = this.waitingWorker[type].shift();
 
-                    process.nextTick(() => { waitingHead.resolve(doc); });
+                    if (waitingHead !== undefined) {
+                        process.nextTick(() => { waitingHead.resolve(doc); });
+                    }
                 }
 
                 resolve();
