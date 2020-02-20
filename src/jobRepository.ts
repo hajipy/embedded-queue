@@ -32,7 +32,7 @@ export class JobRepository {
 
     public init(): Promise<void> {
         return new Promise<void>((resolve, reject) => {
-            this.db.loadDatabase((error: any) => {
+            this.db.loadDatabase((error: Error) => {
                 if (error !== null) {
                     reject(error);
                     return;
@@ -49,7 +49,7 @@ export class JobRepository {
 
             this.db.find(query)
                 .sort({ createdAt: 1 })
-                .exec((error, docs: any[]) => {
+                .exec((error, docs: NeDbJob[]) => {
                     if (error !== null) {
                         reject(error);
                         return;
@@ -62,7 +62,7 @@ export class JobRepository {
 
     public findJob(id: string): Promise<NeDbJob> {
         return new Promise<NeDbJob>((resolve, reject) => {
-            this.db.findOne({ _id: id }, (error, doc: any) => {
+            this.db.findOne({ _id: id }, (error, doc: NeDbJob) => {
                     if (error !== null) {
                         reject(error);
                         return;
@@ -82,7 +82,7 @@ export class JobRepository {
             this.db.find({ type, state: State.INACTIVE })
                 .sort({ priority: -1, createdAt: 1 })
                 .limit(1)
-                .exec((error, docs: any[]) => {
+                .exec((error, docs: NeDbJob[]) => {
                     if (error !== null) {
                         reject(error);
                         return;

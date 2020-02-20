@@ -12,10 +12,10 @@ import { Worker } from "./worker";
 export interface CreateJobData {
     type: string;
     priority?: Priority;
-    data?: any;
+    data?: unknown;
 }
 
-export type Processor = (job: Job) => Promise<any>;
+export type Processor = (job: Job) => Promise<unknown>;
 
 export class Queue extends EventEmitter {
     public static async createQueue(dbOptions?: any): Promise<Queue> {
