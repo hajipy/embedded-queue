@@ -21,6 +21,7 @@
     "@types/nedb": "1.8.9",
     "@types/node": "*",
     "@types/uuid": "3.4.6",
+    "eslint": "6.x",
     "typescript": "3.7.x"
   },
   "scripts": {
