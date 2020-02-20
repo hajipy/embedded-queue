@@ -7,7 +7,7 @@ interface WorkerConstructorData {
 }
 
 interface ShutdownInfo {
-    timer: any;
+    timer: NodeJS.Timeout;
     resolve: () => void;
 }
 
@@ -124,7 +124,7 @@ export class Worker {
 
         await this._currentJob.setStateToActive();
 
-        let result: any;
+        let result: unknown;
 
         try {
             result = await processor(this._currentJob);
