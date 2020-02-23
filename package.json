@@ -1,6 +1,6 @@
 {
   "name": "embedded-queue",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Embedded job/message queue, NeDb backend.",
   "main": "dist/index.js",
   "license": "MIT",
