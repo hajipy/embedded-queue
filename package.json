@@ -21,10 +21,14 @@
     "@types/nedb": "1.8.9",
     "@types/node": "*",
     "@types/uuid": "3.4.6",
+    "@typescript-eslint/eslint-plugin": "2.x",
+    "@typescript-eslint/parser": "2.x",
+    "eslint": "6.x",
     "typescript": "3.7.x"
   },
   "scripts": {
-    "prepare": "tsc"
+    "prepare": "tsc",
+    "lint": "eslint . --ext .ts"
   },
   "repository": {
     "type": "git",

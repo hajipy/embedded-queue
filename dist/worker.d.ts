@@ -1,3 +1,4 @@
+/// <reference types="node" />
 import { Job } from "./job";
 import { Processor, Queue } from "./queue";
 interface WorkerConstructorData {
@@ -5,7 +6,7 @@ interface WorkerConstructorData {
     queue: Queue;
 }
 interface ShutdownInfo {
-    timer: any;
+    timer: NodeJS.Timeout;
     resolve: () => void;
 }
 export declare class Worker {

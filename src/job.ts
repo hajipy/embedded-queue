@@ -8,7 +8,7 @@ export interface JobConstructorData {
     id: string;
     type: string;
     priority?: Priority;
-    data?: any;
+    data?: unknown;
     createdAt: Date;
     updatedAt: Date;
     startedAt?: Date;
@@ -22,7 +22,7 @@ export interface JobConstructorData {
 export class Job {
     public readonly id: string;
     public readonly type: string;
-    public readonly data: any | undefined;
+    public readonly data: unknown | undefined;
 
     protected readonly queue: Queue;
 
@@ -100,7 +100,7 @@ export class Job {
         this._saved = data.saved;
     }
 
-    public async setProgress(completed: number, total: number) {
+    public async setProgress(completed: number, total: number): Promise<void> {
         this._progress = Math.min(100, completed * 100 / total);
         this._updatedAt = new Date();
 
@@ -139,7 +139,7 @@ export class Job {
         this.queue.emit(Event.Remove, this);
     }
 
-    public async setPriority(value: Priority) {
+    public async setPriority(value: Priority): Promise<void> {
         this._priority = value;
 
         this._updatedAt = new Date();
@@ -154,7 +154,7 @@ export class Job {
     }
 
     /** @package */
-    public async setStateToActive() {
+    public async setStateToActive(): Promise<void> {
         this._state = State.ACTIVE;
 
         const now = new Date();
@@ -167,7 +167,7 @@ export class Job {
     }
 
     /** @package */
-    public async setStateToComplete(result?: any) {
+    public async setStateToComplete(result?: unknown): Promise<void> {
         this._state = State.COMPLETE;
 
         const now = new Date();
@@ -183,7 +183,7 @@ export class Job {
     }
 
     /** @package */
-    public async setStateToFailure(error: Error) {
+    public async setStateToFailure(error: Error): Promise<void> {
         this._state = State.FAILURE;
 
         const now = new Date();
@@ -195,7 +195,7 @@ export class Job {
         this.queue.emit(Event.Failure, this, error);
     }
 
-    protected async update() {
+    protected async update(): Promise<void> {
         await this.queue.updateJob(this);
     }
 }

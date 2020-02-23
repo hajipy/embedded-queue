@@ -6,7 +6,7 @@ export interface JobConstructorData {
     id: string;
     type: string;
     priority?: Priority;
-    data?: any;
+    data?: unknown;
     createdAt: Date;
     updatedAt: Date;
     startedAt?: Date;
@@ -19,7 +19,7 @@ export interface JobConstructorData {
 export declare class Job {
     readonly id: string;
     readonly type: string;
-    readonly data: any | undefined;
+    readonly data: unknown | undefined;
     protected readonly queue: Queue;
     protected _priority: Priority;
     protected _createdAt: Date;
@@ -52,7 +52,7 @@ export declare class Job {
     /** @package */
     setStateToActive(): Promise<void>;
     /** @package */
-    setStateToComplete(result?: any): Promise<void>;
+    setStateToComplete(result?: unknown): Promise<void>;
     /** @package */
     setStateToFailure(error: Error): Promise<void>;
     protected update(): Promise<void>;

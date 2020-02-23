@@ -4,7 +4,7 @@ import uuid from "uuid/v4";
 
 import { Event } from "./event";
 import { Job } from "./job";
-import { JobRepository } from "./jobRepository";
+import { DbOptions, JobRepository } from "./jobRepository";
 import { Priority } from "./priority";
 import { State } from "./state";
 import { Worker } from "./worker";
@@ -12,13 +12,13 @@ import { Worker } from "./worker";
 export interface CreateJobData {
     type: string;
     priority?: Priority;
-    data?: any;
+    data?: unknown;
 }
 
-export type Processor = (job: Job) => Promise<any>;
+export type Processor = (job: Job) => Promise<unknown>;
 
 export class Queue extends EventEmitter {
-    public static async createQueue(dbOptions?: any): Promise<Queue> {
+    public static async createQueue(dbOptions?: DbOptions): Promise<Queue> {
         const queue = new Queue(dbOptions);
 
         await queue.repository.init();
@@ -50,7 +50,7 @@ export class Queue extends EventEmitter {
         return [...this._workers];
     }
 
-    protected constructor(dbOptions?: any) {
+    protected constructor(dbOptions?: DbOptions) {
         super();
 
         this.repository = new JobRepository(dbOptions);
@@ -78,7 +78,7 @@ export class Queue extends EventEmitter {
         return await job.save();
     }
 
-    public process(type: string, processor: Processor, concurrency: number) {
+    public process(type: string, processor: Processor, concurrency: number): void {
         for (let i = 0; i < concurrency; i++) {
             const worker = new Worker({
                 type,
@@ -91,28 +91,24 @@ export class Queue extends EventEmitter {
         }
     }
 
-    public shutdown(timeoutMilliseconds: number, type?: string | undefined): Promise<void> {
-        return new Promise<void>(async (resolve) => {
-            const shutdownWorkers: Worker[] = [];
+    public async shutdown(timeoutMilliseconds: number, type?: string | undefined): Promise<void> {
+        const shutdownWorkers: Worker[] = [];
 
-            for (const worker of this._workers) {
-                if (type !== undefined && worker.type !== type) {
-                    continue;
-                }
-
-                await worker.shutdown(timeoutMilliseconds);
-
-                shutdownWorkers.push(worker);
+        for (const worker of this._workers) {
+            if (type !== undefined && worker.type !== type) {
+                continue;
             }
 
-            this._workers = this._workers.filter(
-                (worker) => {
-                    return shutdownWorkers.includes(worker) === false;
-                }
-            );
+            await worker.shutdown(timeoutMilliseconds);
 
-            resolve();
-        });
+            shutdownWorkers.push(worker);
+        }
+
+        this._workers = this._workers.filter(
+            (worker) => {
+                return shutdownWorkers.includes(worker) === false;
+            }
+        );
     }
 
     public async findJob(id: string): Promise<Job | null> {

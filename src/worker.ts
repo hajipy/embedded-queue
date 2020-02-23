@@ -7,7 +7,7 @@ interface WorkerConstructorData {
 }
 
 interface ShutdownInfo {
-    timer: any;
+    timer: NodeJS.Timeout;
     resolve: () => void;
 }
 
@@ -37,7 +37,7 @@ export class Worker {
         this.queue = data.queue;
     }
 
-    public start(processor: Processor) {
+    public start(processor: Processor): void {
         this._isRunning = true;
 
         this.startInternal(processor);
@@ -86,7 +86,7 @@ export class Worker {
         });
     }
 
-    protected startInternal(processor: Processor) {
+    protected startInternal(processor: Processor): void {
         // 実行中じゃなければシャットダウンが進行中なので、処理を中断する
         // Note: この処理は本当は下に書きたいのだけど、TypeScriptの型認識が間違ってしまうため、ここに書いている
         if (this._isRunning === false) {
@@ -99,7 +99,7 @@ export class Worker {
             return;
         }
 
-        (async () => {
+        (async (): Promise<void> => {
             this._currentJob = await this.queue.findInactiveJobByType(this.type);
 
             // 実行中じゃなければシャットダウンが進行中なので、処理を中断する
@@ -116,7 +116,7 @@ export class Worker {
         })();
     }
 
-    protected async process(processor: Processor) {
+    protected async process(processor: Processor): Promise<void> {
         if (this._currentJob === null) {
             console.warn(`this._currentJob is null`);
             return;
@@ -124,7 +124,7 @@ export class Worker {
 
         await this._currentJob.setStateToActive();
 
-        let result: any;
+        let result: unknown;
 
         try {
             result = await processor(this._currentJob);

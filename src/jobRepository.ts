@@ -1,13 +1,13 @@
-import DataStore from "nedb";
+import DataStore, { DataStoreOptions } from "nedb";
 
 import { Job } from "./job";
 import { State } from "./state";
 
-interface INeDbJob {
+interface NeDbJob {
     _id: string;
     type: string;
     priority: number;
-    data?: any;
+    data?: unknown;
     createdAt: Date;
     updatedAt: Date;
     startedAt?: Date;
@@ -19,20 +19,27 @@ interface INeDbJob {
     logs: string[];
 }
 
+export type DbOptions = DataStoreOptions;
+
+interface WaitingWorkerRequest {
+    resolve: (value: NeDbJob) => void;
+    reject: (error: Error) => void;
+}
+
 export class JobRepository {
     protected readonly db: DataStore;
-    protected waitingWorkers: any;
+    protected waitingWorker: { [type: string]: WaitingWorkerRequest[] };
 
-    public constructor(dbOptions: any = {}) {
+    public constructor(dbOptions: DbOptions = {}) {
         this.db = new DataStore(
             Object.assign({}, dbOptions, { timestampData: true })
         );
-        this.waitingWorkers = {};
+        this.waitingWorker = {};
     }
 
     public init(): Promise<void> {
         return new Promise<void>((resolve, reject) => {
-            this.db.loadDatabase((error: any) => {
+            this.db.loadDatabase((error: Error) => {
                 if (error !== null) {
                     reject(error);
                     return;
@@ -43,13 +50,13 @@ export class JobRepository {
         });
     }
 
-    public listJobs(state?: State): Promise<INeDbJob[]> {
-        return new Promise<INeDbJob[]>((resolve, reject) => {
+    public listJobs(state?: State): Promise<NeDbJob[]> {
+        return new Promise<NeDbJob[]>((resolve, reject) => {
             const query = (state === undefined) ? {} : { state };
 
             this.db.find(query)
                 .sort({ createdAt: 1 })
-                .exec((error, docs: any[]) => {
+                .exec((error, docs: NeDbJob[]) => {
                     if (error !== null) {
                         reject(error);
                         return;
@@ -60,9 +67,9 @@ export class JobRepository {
         });
     }
 
-    public findJob(id: string): Promise<INeDbJob> {
-        return new Promise<INeDbJob>((resolve, reject) => {
-            this.db.findOne({ _id: id }, (error, doc: any) => {
+    public findJob(id: string): Promise<NeDbJob> {
+        return new Promise<NeDbJob>((resolve, reject) => {
+            this.db.findOne({ _id: id }, (error, doc: NeDbJob) => {
                     if (error !== null) {
                         reject(error);
                         return;
@@ -73,16 +80,16 @@ export class JobRepository {
         });
     }
 
-    public findInactiveJobByType(type: string): Promise<INeDbJob> {
-        return new Promise<INeDbJob>((resolve, reject) => {
-            if (this.waitingWorkers[type] !== undefined && this.waitingWorkers[type].length > 0) {
-                this.waitingWorkers[type].push({ resolve, reject });
+    public findInactiveJobByType(type: string): Promise<NeDbJob> {
+        return new Promise<NeDbJob>((resolve, reject) => {
+            if (this.waitingWorker[type] !== undefined && this.waitingWorker[type].length > 0) {
+                this.waitingWorker[type].push({ resolve, reject });
             }
 
             this.db.find({ type, state: State.INACTIVE })
                 .sort({ priority: -1, createdAt: 1 })
                 .limit(1)
-                .exec((error, docs: any[]) => {
+                .exec((error, docs: NeDbJob[]) => {
                     if (error !== null) {
                         reject(error);
                         return;
@@ -90,11 +97,11 @@ export class JobRepository {
 
                     // 該当typeのジョブがない場合、新たに作成されるまで待機する
                     if (docs.length === 0) {
-                        if (this.waitingWorkers[type] === undefined) {
-                            this.waitingWorkers[type] = [];
+                        if (this.waitingWorker[type] === undefined) {
+                            this.waitingWorker[type] = [];
                         }
 
-                        this.waitingWorkers[type].push({ resolve, reject });
+                        this.waitingWorker[type].push({ resolve, reject });
                         return;
                     }
 
@@ -136,10 +143,12 @@ export class JobRepository {
                 }
 
                 const type = job.type;
-                if (this.waitingWorkers[type] !== undefined && this.waitingWorkers[type].length > 0) {
-                    const waitingHead = this.waitingWorkers[type].shift();
+                if (this.waitingWorker[type] !== undefined) {
+                    const waitingHead = this.waitingWorker[type].shift();
 
-                    process.nextTick(() => { waitingHead.resolve(doc); });
+                    if (waitingHead !== undefined) {
+                        process.nextTick(() => { waitingHead.resolve(doc); });
+                    }
                 }
 
                 resolve();
