@@ -9,6 +9,7 @@ const event_1 = require("./event");
 const job_1 = require("./job");
 const jobRepository_1 = require("./jobRepository");
 const priority_1 = require("./priority");
+const state_1 = require("./state");
 const worker_1 = require("./worker");
 class Queue extends events_1.EventEmitter {
     constructor(dbOptions) {
@@ -19,6 +20,7 @@ class Queue extends events_1.EventEmitter {
     static async createQueue(dbOptions) {
         const queue = new Queue(dbOptions);
         await queue.repository.init();
+        await queue.cleanupAfterUnexpectedlyTermination();
         return queue;
     }
     static sanitizePriority(priority) {
@@ -244,6 +246,12 @@ class Queue extends events_1.EventEmitter {
         catch (error) {
             this.emit(event_1.Event.Error, error, job);
             throw error;
+        }
+    }
+    async cleanupAfterUnexpectedlyTermination() {
+        const jobsNeedCleanup = await this.listJobs(state_1.State.ACTIVE);
+        for (const job of jobsNeedCleanup) {
+            await job.setStateToFailure(new Error("unexpectedly termination"));
         }
     }
 }

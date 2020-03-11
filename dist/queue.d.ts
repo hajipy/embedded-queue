@@ -35,4 +35,5 @@ export declare class Queue extends EventEmitter {
     updateJob(job: Job): Promise<void>;
     /** @package */
     removeJob(job: Job): Promise<void>;
+    protected cleanupAfterUnexpectedlyTermination(): Promise<void>;
 }
