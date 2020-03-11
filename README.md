@@ -132,5 +132,11 @@ You can stop specified type job processor by passing second argument `type`. If 
     - `progress`: Number that `Job` progress in percentage. You can set value by calling `Job.setProgress`. When job complete, set 100 automatically.
     - `logs`: Array of String. You can add log by calling `Job.addLog`.
 
+## Advanced
+
+### Unexpectedly Termination
+If your program suddenly terminated without calling `Queue.shutdown` while your processor was processing jobs. These jobs remain `State.ACTIVE` in queue. When next time `Queue.createQueue` is called, these jobs are updated to `State.FAILURE` automatically.    
+If you want reprocessing these jobs, please call `Queue.createJob` with same parameter.
+
 ## License
 MIT
