@@ -23,6 +23,8 @@ export class Queue extends EventEmitter {
 
         await queue.repository.init();
 
+        await queue.cleanupAfterUnexpectedlyTermination();
+
         return queue;
     }
 
@@ -302,6 +304,14 @@ export class Queue extends EventEmitter {
         catch (error) {
             this.emit(Event.Error, error, job);
             throw error;
+        }
+    }
+
+    protected async cleanupAfterUnexpectedlyTermination(): Promise<void> {
+        const jobsNeedCleanup = await this.listJobs(State.ACTIVE);
+
+        for (const job of jobsNeedCleanup) {
+            await job.setStateToFailure(new Error("unexpectedly termination"));
         }
     }
 }
