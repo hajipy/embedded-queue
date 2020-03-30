@@ -33,6 +33,7 @@
   },
   "scripts": {
     "prepare": "tsc",
+    "test": "jest",
     "lint": "eslint . --ext .ts"
   },
   "repository": {
