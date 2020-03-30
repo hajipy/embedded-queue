@@ -25,6 +25,7 @@
     "@typescript-eslint/parser": "2.x",
     "eslint": "6.x",
     "jest": "25.x",
+    "ts-jest": "25.x",
     "typescript": "3.7.x"
   },
   "scripts": {
