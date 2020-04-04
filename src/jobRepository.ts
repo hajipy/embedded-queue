@@ -84,6 +84,7 @@ export class JobRepository {
         return new Promise<NeDbJob>((resolve, reject) => {
             if (this.waitingWorker[type] !== undefined && this.waitingWorker[type].length > 0) {
                 this.waitingWorker[type].push({ resolve, reject });
+                return;
             }
 
             this.db.find({ type, state: State.INACTIVE })
