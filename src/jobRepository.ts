@@ -3,7 +3,7 @@ import DataStore, { DataStoreOptions } from "nedb";
 import { Job } from "./job";
 import { State } from "./state";
 
-interface NeDbJob {
+export interface NeDbJob {
     _id: string;
     type: string;
     priority: number;
@@ -67,9 +67,9 @@ export class JobRepository {
         });
     }
 
-    public findJob(id: string): Promise<NeDbJob> {
-        return new Promise<NeDbJob>((resolve, reject) => {
-            this.db.findOne({ _id: id }, (error, doc: NeDbJob) => {
+    public findJob(id: string): Promise<NeDbJob | null> {
+        return new Promise<NeDbJob | null>((resolve, reject) => {
+            this.db.findOne({ _id: id }, (error, doc: NeDbJob| null) => {
                     if (error !== null) {
                         reject(error);
                         return;
