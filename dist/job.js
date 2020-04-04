@@ -54,7 +54,7 @@ class Job {
         return [...this._logs];
     }
     async setProgress(completed, total) {
-        this._progress = Math.min(100, completed * 100 / total);
+        this._progress = completed * 100 / total;
         this._updatedAt = new Date();
         await this.update();
         this.queue.emit(event_1.Event.Progress, this, this._progress);
