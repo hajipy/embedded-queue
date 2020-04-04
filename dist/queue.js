@@ -129,24 +129,33 @@ class Queue extends events_1.EventEmitter {
         }
     }
     async removeJobById(id) {
-        let job;
+        let doc;
         try {
-            const doc = await this.repository.findJob(id);
-            job = new job_1.Job({
-                queue: this,
-                id: doc._id,
-                type: doc.type,
-                priority: Queue.sanitizePriority(doc.priority),
-                data: doc.data,
-                createdAt: doc.createdAt,
-                updatedAt: doc.updatedAt,
-                startedAt: doc.startedAt,
-                completedAt: doc.completedAt,
-                failedAt: doc.failedAt,
-                state: doc.state,
-                logs: doc.logs,
-                saved: true,
-            });
+            doc = await this.repository.findJob(id);
+        }
+        catch (error) {
+            this.emit(event_1.Event.Error, error);
+            throw error;
+        }
+        if (doc === null) {
+            throw new Error(`Job(id:${id}) is not found.`);
+        }
+        const job = new job_1.Job({
+            queue: this,
+            id: doc._id,
+            type: doc.type,
+            priority: Queue.sanitizePriority(doc.priority),
+            data: doc.data,
+            createdAt: doc.createdAt,
+            updatedAt: doc.updatedAt,
+            startedAt: doc.startedAt,
+            completedAt: doc.completedAt,
+            failedAt: doc.failedAt,
+            state: doc.state,
+            logs: doc.logs,
+            saved: true,
+        });
+        try {
             return await job.remove();
         }
         catch (error) {

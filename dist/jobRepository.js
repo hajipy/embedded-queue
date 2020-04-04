@@ -50,6 +50,7 @@ class JobRepository {
         return new Promise((resolve, reject) => {
             if (this.waitingWorker[type] !== undefined && this.waitingWorker[type].length > 0) {
                 this.waitingWorker[type].push({ resolve, reject });
+                return;
             }
             this.db.find({ type, state: state_1.State.INACTIVE })
                 .sort({ priority: -1, createdAt: 1 })
