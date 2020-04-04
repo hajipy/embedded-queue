@@ -1,6 +1,27 @@
+import { mock } from "jest-mock-extended";
 import DataStore from "nedb";
-import { Priority, State } from "../src";
-import { JobRepository } from "../src/jobRepository";
+
+import { Job, Priority, Queue, State } from "../src";
+import { JobRepository, NeDbJob } from "../src/jobRepository";
+
+// Note: Same as src/jobRepository.ts
+interface WaitingWorkerRequest {
+    resolve: (value: NeDbJob) => void;
+    reject: (error: Error) => void;
+}
+
+function dbInsert(db: DataStore, doc: unknown): Promise<void> {
+    return new Promise<void>(((resolve, reject) => {
+        db.insert(doc, (error) => {
+            if (error !== null) {
+                reject(error);
+            }
+            else {
+                resolve();
+            }
+        });
+    }));
+}
 
 describe("init", () => {
     test("Success", async () => {
@@ -44,52 +65,270 @@ describe("listJobs", () => {
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const db: DataStore = (repository as any).db;
-        const insertDocs = [
-            {
-                _id: "1",
-                type: "type",
-                priority: Priority.NORMAL,
-                data: {
-                    a: "aaa",
-                    b: 123,
-                    c: {
-                        x: true,
-                        y: {
-                            z: true,
-                        },
-                    },
+        const id = "1";
+        const type = "type";
+        const priority = Priority.NORMAL;
+        const data = {
+            a: "aaa",
+            b: 123,
+            c: {
+                x: true,
+                y: {
+                    z: true,
                 },
-                createdAt: new Date(),
-                updatedAt: new Date(),
-                startedAt: new Date(),
-                completedAt: new Date(),
-                failedAt: new Date(),
-                state: State.INACTIVE,
-                duration: 123,
-                progress: 1 / 3,
-                logs: [
-                    "First Log",
-                    "Second Log",
-                    "Third Log",
-                ],
             },
+        };
+        const createdAt = new Date(2020, 4, 1, 0, 0, 0);
+        const updatedAt = new Date(2020, 4, 2, 0, 0, 0);
+        const startedAt = new Date(2020, 4, 3, 0, 0, 0);
+        const completedAt = new Date(2020, 4, 4, 0, 0, 0);
+        const failedAt = new Date(2020, 4, 5, 0, 0, 0);
+        const state = State.INACTIVE;
+        const duration = 123;
+        const progress = 1 / 3;
+        const logs = [
+            "First Log",
+            "Second Log",
+            "Third Log",
         ];
 
-        for (const insertDoc of insertDocs) {
-            await new Promise<void>(((resolve, reject) => {
-                db.insert(insertDoc, (error) => {
-                    if (error !== null) {
-                        reject(error);
-                    }
-                    else {
-                        resolve();
-                    }
-                });
-            }));
-        }
+        await dbInsert(
+            db,
+            {
+                _id: id,
+                type,
+                priority,
+                data,
+                createdAt,
+                updatedAt,
+                startedAt,
+                completedAt,
+                failedAt,
+                state,
+                duration,
+                progress,
+                logs,
+            }
+        );
 
         const jobs = await repository.listJobs();
 
         expect(jobs).toHaveLength(1);
+        expect(jobs[0]).toEqual({
+            _id: id,
+            type,
+            priority,
+            data,
+            createdAt,
+            updatedAt,
+            startedAt,
+            completedAt,
+            failedAt,
+            state,
+            duration,
+            progress,
+            logs,
+        });
+    });
+
+    test("sort", async () => {
+        const repository = new JobRepository({
+            inMemoryOnly: true,
+        });
+        await repository.init();
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const db: DataStore = (repository as any).db;
+
+        const createdAts = [
+            new Date(2020, 4, 2, 0, 0, 0),
+            new Date(2020, 4, 1, 0, 0, 0),
+            new Date(2020, 4, 3, 0, 0, 0),
+        ];
+
+        for (const [index, createdAt] of createdAts.entries()) {
+            await dbInsert(
+                db,
+                {
+                    _id: index.toString(),
+                    type: "type",
+                    priority: Priority.NORMAL,
+                    createdAt,
+                    updatedAt: new Date(),
+                }
+            );
+        }
+
+        const jobs = await repository.listJobs();
+
+        expect(jobs).toHaveLength(3);
+        expect(jobs[0]._id).toBe("1");
+        expect(jobs[0].createdAt).toBe(createdAts[1]);
+        expect(jobs[1]._id).toBe("0");
+        expect(jobs[1].createdAt).toBe(createdAts[0]);
+        expect(jobs[2]._id).toBe("2");
+        expect(jobs[2].createdAt).toBe(createdAts[2]);
+    });
+
+    test("state", async () => {
+        const repository = new JobRepository({
+            inMemoryOnly: true,
+        });
+        await repository.init();
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const db: DataStore = (repository as any).db;
+
+        const states = [
+            State.INACTIVE,
+            State.ACTIVE,
+            State.COMPLETE,
+            State.FAILURE,
+        ];
+
+        for (const [index, state] of states.entries()) {
+            await dbInsert(
+                db,
+                {
+                    _id: index.toString(),
+                    type: "type",
+                    priority: Priority.NORMAL,
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
+                    state,
+                }
+            );
+        }
+
+        const inactiveJobs = await repository.listJobs(State.INACTIVE);
+        expect(inactiveJobs).toHaveLength(1);
+        expect(inactiveJobs[0]._id).toBe("0");
+        expect(inactiveJobs[0].state).toBe(State.INACTIVE);
+
+        const activeJobs = await repository.listJobs(State.ACTIVE);
+        expect(activeJobs).toHaveLength(1);
+        expect(activeJobs[0]._id).toBe("1");
+        expect(activeJobs[0].state).toBe(State.ACTIVE);
+
+        const completeJobs = await repository.listJobs(State.COMPLETE);
+        expect(completeJobs).toHaveLength(1);
+        expect(completeJobs[0]._id).toBe("2");
+        expect(completeJobs[0].state).toBe(State.COMPLETE);
+
+        const failureJobs = await repository.listJobs(State.FAILURE);
+        expect(failureJobs).toHaveLength(1);
+        expect(failureJobs[0]._id).toBe("3");
+        expect(failureJobs[0].state).toBe(State.FAILURE);
+    });
+});
+
+describe("findJob", () => {
+    const repository = new JobRepository({
+        inMemoryOnly: true,
+    });
+
+    beforeAll(async () => {
+        await repository.init();
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const db: DataStore = (repository as any).db;
+
+        for (let i = 0; i < 3; i++) {
+            await dbInsert(
+                db,
+                {
+                    _id: i.toString(),
+                    type: "type",
+                    priority: Priority.NORMAL,
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
+                }
+            );
+        }
+    });
+
+    test("found", async () => {
+        const job = await repository.findJob("1");
+        expect(job).not.toBeNull();
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        expect(job!._id).toBe("1");
+    });
+
+    test("not found", async () => {
+        const job = await repository.findJob("4");
+        expect(job).toBeNull();
+    });
+});
+
+describe("findInactiveJobByType", () => {
+    test("immediately found", async () => {
+        const repository = new JobRepository({
+            inMemoryOnly: true,
+        });
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const db: DataStore = (repository as any).db;
+
+        await dbInsert(
+            db,
+            {
+                _id: "1",
+                type: "type",
+                priority: Priority.NORMAL,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+                state: State.INACTIVE,
+            }
+        );
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const waitingWorker: { [type: string]: WaitingWorkerRequest[] } = (repository as any).waitingWorker;
+
+        expect(waitingWorker["type"]).toBeUndefined();
+        const timeBeforeCall = new Date();
+        const job = await repository.findInactiveJobByType("type");
+        const timeAfterCall = new Date();
+        expect(job._id).toBe("1");
+        expect(timeAfterCall.getTime() - timeBeforeCall.getTime()).toBeLessThan(100); // msec
+        expect(waitingWorker["type"]).toBeUndefined();
+    });
+
+    test("queue waiting", async () => {
+        const repository = new JobRepository({
+            inMemoryOnly: true,
+        });
+
+        setTimeout(
+            (): Promise<void> => {
+                return repository.addJob(
+                    new Job({
+                        queue: mock<Queue>(),
+                        id: "1",
+                        type: "type",
+                        createdAt: new Date(),
+                        updatedAt: new Date(),
+                        state: State.INACTIVE,
+                        logs: [],
+                        saved: false,
+                    })
+                );
+            },
+            1000
+        );
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const waitingWorker: { [type: string]: WaitingWorkerRequest[] } = (repository as any).waitingWorker;
+
+        expect(waitingWorker["type"]).toBeUndefined();
+        const timeBeforeCall = new Date();
+        const findJobPromise = repository.findInactiveJobByType("type");
+        await new Promise<void>((resolve) => setTimeout(resolve, 100));
+        expect(waitingWorker["type"]).not.toBeUndefined();
+        expect(waitingWorker["type"]).toHaveLength(1);
+        const job = await findJobPromise;
+        const timeAfterCall = new Date();
+        expect(job._id).toBe("1");
+        expect(timeAfterCall.getTime() - timeBeforeCall.getTime()).toBeGreaterThan(1000); // msec
+        expect(waitingWorker["type"]).toHaveLength(0);
     });
 });
