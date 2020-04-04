@@ -4,7 +4,7 @@ import uuid from "uuid/v4";
 
 import { Event } from "./event";
 import { Job } from "./job";
-import { DbOptions, JobRepository } from "./jobRepository";
+import { DbOptions, JobRepository, NeDbJob } from "./jobRepository";
 import { Priority } from "./priority";
 import { State } from "./state";
 import { Worker } from "./worker";
@@ -172,27 +172,36 @@ export class Queue extends EventEmitter {
     }
 
     public async removeJobById(id: string): Promise<void> {
-        let job: Job | undefined;
+        let doc: NeDbJob | null;
+        try {
+            doc = await this.repository.findJob(id);
+        }
+        catch (error) {
+            this.emit(Event.Error, error);
+            throw error;
+        }
+
+        if (doc === null) {
+            throw new Error(`Job(id:${id}) is not found.`);
+        }
+
+        const job = new Job({
+            queue: this,
+            id: doc._id,
+            type: doc.type,
+            priority: Queue.sanitizePriority(doc.priority),
+            data: doc.data,
+            createdAt: doc.createdAt,
+            updatedAt: doc.updatedAt,
+            startedAt: doc.startedAt,
+            completedAt: doc.completedAt,
+            failedAt: doc.failedAt,
+            state: doc.state,
+            logs: doc.logs,
+            saved: true,
+        });
 
         try {
-            const doc = await this.repository.findJob(id);
-
-            job = new Job({
-                queue: this,
-                id: doc._id,
-                type: doc.type,
-                priority: Queue.sanitizePriority(doc.priority),
-                data: doc.data,
-                createdAt: doc.createdAt,
-                updatedAt: doc.updatedAt,
-                startedAt: doc.startedAt,
-                completedAt: doc.completedAt,
-                failedAt: doc.failedAt,
-                state: doc.state,
-                logs: doc.logs,
-                saved: true,
-            });
-
             return await job.remove();
         }
         catch (error) {
