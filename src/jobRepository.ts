@@ -111,9 +111,9 @@ export class JobRepository {
         });
     }
 
-    public isExistJob(job: Job): Promise<boolean> {
+    public isExistJob(id: string): Promise<boolean> {
         return new Promise<boolean>((resolve, reject) => {
-            this.db.count({ _id: job.id }, (error, count: number) => {
+            this.db.count({ _id: id }, (error, count: number) => {
                 if (error !== null) {
                     reject(error);
                     return;

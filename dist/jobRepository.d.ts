@@ -31,7 +31,7 @@ export declare class JobRepository {
     listJobs(state?: State): Promise<NeDbJob[]>;
     findJob(id: string): Promise<NeDbJob | null>;
     findInactiveJobByType(type: string): Promise<NeDbJob>;
-    isExistJob(job: Job): Promise<boolean>;
+    isExistJob(id: string): Promise<boolean>;
     addJob(job: Job): Promise<void>;
     updateJob(job: Job): Promise<void>;
     removeJob(job: Job): Promise<void>;

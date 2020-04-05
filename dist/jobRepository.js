@@ -72,9 +72,9 @@ class JobRepository {
             });
         });
     }
-    isExistJob(job) {
+    isExistJob(id) {
         return new Promise((resolve, reject) => {
-            this.db.count({ _id: job.id }, (error, count) => {
+            this.db.count({ _id: id }, (error, count) => {
                 if (error !== null) {
                     reject(error);
                     return;
