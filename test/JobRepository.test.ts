@@ -246,7 +246,7 @@ describe("findJob", () => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const db: DataStore = (repository as any).db;
 
-        for (let i = 0; i < 3; i++) {
+        for (let i = 1; i <= 3; i++) {
             await dbInsert(
                 db,
                 {
@@ -436,5 +436,41 @@ describe("findInactiveJobByType", () => {
                 await dbRemove(db, job._id);
             }
         }
+    });
+});
+
+describe("isExistJob", () => {
+    const repository = new JobRepository({
+        inMemoryOnly: true,
+    });
+
+    beforeAll(async () => {
+        await repository.init();
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const db: DataStore = (repository as any).db;
+
+        for (let i = 1; i <= 3; i++) {
+            await dbInsert(
+                db,
+                {
+                    _id: i.toString(),
+                    type: "type",
+                    priority: Priority.NORMAL,
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
+                }
+            );
+        }
+    });
+
+    test("exits", async () => {
+        expect(await repository.isExistJob("1")).toBe(true);
+        expect(await repository.isExistJob("2")).toBe(true);
+        expect(await repository.isExistJob("3")).toBe(true);
+    });
+
+    test("not exist", async () => {
+        expect(await repository.isExistJob("4")).toBe(false);
     });
 });
