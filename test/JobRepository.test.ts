@@ -10,6 +10,21 @@ interface WaitingWorkerRequest {
     reject: (error: Error) => void;
 }
 
+function dbFind(db: DataStore, _id: string): Promise<NeDbJob | null> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return new Promise<NeDbJob | null>((resolve, reject) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        db.findOne({ _id }, (error, doc: NeDbJob | null) => {
+            if (error !== null) {
+                reject(error);
+            }
+            else {
+                resolve(doc);
+            }
+        });
+    });
+}
+
 function dbInsert(db: DataStore, doc: unknown): Promise<void> {
     return new Promise<void>(((resolve, reject) => {
         db.insert(doc, (error) => {
@@ -263,8 +278,9 @@ describe("findJob", () => {
     test("found", async () => {
         const job = await repository.findJob("1");
         expect(job).not.toBeNull();
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        expect(job!._id).toBe("1");
+        if (job !== null) {
+            expect(job._id).toBe("1");
+        }
     });
 
     test("not found", async () => {
@@ -473,4 +489,61 @@ describe("isExistJob", () => {
     test("not exist", async () => {
         expect(await repository.isExistJob("4")).toBe(false);
     });
+});
+
+test("addJob", async () => {
+    const repository = new JobRepository({
+        inMemoryOnly: true,
+    });
+    await repository.init();
+
+    const job = new Job({
+        queue: mock<Queue>(),
+        id: "1",
+        type: "type",
+        priority: Priority.HIGH,
+        data: {
+            a: "aaa",
+            b: 123,
+            c: {
+                x: true,
+                y: {
+                    z: true,
+                },
+            },
+        },
+        createdAt: new Date(2020, 4, 1, 0, 0, 0),
+        updatedAt: new Date(2020, 4, 2, 0, 0, 0),
+        state: State.INACTIVE,
+        logs: [
+            "log1",
+            "log2",
+            "log3",
+        ],
+        saved: false,
+    });
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const db: DataStore = (repository as any).db;
+
+    const jobDocBefore = await dbFind(db, "1");
+    expect(jobDocBefore).toBeNull();
+
+    await repository.addJob(job);
+
+    const jobDocAfter = await dbFind(db, "1");
+    expect(jobDocAfter).not.toBeNull();
+    if (jobDocAfter !== null) {
+        expect(jobDocAfter._id).toBe(job.id);
+        expect(jobDocAfter.type).toBe(job.type);
+        expect(jobDocAfter.priority).toBe(job.priority);
+        expect(jobDocAfter.data).toEqual(job.data);
+        expect(jobDocAfter.createdAt).toEqual(job.createdAt);
+        expect(jobDocAfter.updatedAt).toEqual(job.updatedAt);
+        expect(jobDocAfter.startedAt).toBeUndefined();
+        expect(jobDocAfter.completedAt).toBeUndefined();
+        expect(jobDocAfter.failedAt).toBeUndefined();
+        expect(jobDocAfter.state).toBe(job.state);
+        expect(jobDocAfter.logs).toEqual(job.logs);
+    }
 });
