@@ -225,7 +225,7 @@ class Queue extends events_1.EventEmitter {
     }
     /** @package */
     async isExistJob(job) {
-        return await this.repository.isExistJob(job);
+        return await this.repository.isExistJob(job.id);
     }
     /** @package */
     async addJob(job) {
