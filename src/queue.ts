@@ -280,7 +280,7 @@ export class Queue extends EventEmitter {
 
     /** @package */
     public async isExistJob(job: Job): Promise<boolean> {
-        return await this.repository.isExistJob(job);
+        return await this.repository.isExistJob(job.id);
     }
 
     /** @package */
