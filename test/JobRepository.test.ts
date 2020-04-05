@@ -23,6 +23,19 @@ function dbInsert(db: DataStore, doc: unknown): Promise<void> {
     }));
 }
 
+function dbRemove(db: DataStore, _id: string): Promise<void> {
+    return new Promise<void>(((resolve, reject) => {
+        db.remove({ _id }, (error) => {
+            if (error !== null) {
+                reject(error);
+            }
+            else {
+                resolve();
+            }
+        });
+    }));
+}
+
 describe("init", () => {
     test("Success", async () => {
         const repository = new JobRepository({
@@ -265,6 +278,7 @@ describe("findInactiveJobByType", () => {
         const repository = new JobRepository({
             inMemoryOnly: true,
         });
+        await repository.init();
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const db: DataStore = (repository as any).db;
@@ -285,11 +299,8 @@ describe("findInactiveJobByType", () => {
         const waitingWorker: { [type: string]: WaitingWorkerRequest[] } = (repository as any).waitingWorker;
 
         expect(waitingWorker["type"]).toBeUndefined();
-        const timeBeforeCall = new Date();
         const job = await repository.findInactiveJobByType("type");
-        const timeAfterCall = new Date();
         expect(job._id).toBe("1");
-        expect(timeAfterCall.getTime() - timeBeforeCall.getTime()).toBeLessThan(100); // msec
         expect(waitingWorker["type"]).toBeUndefined();
     });
 
@@ -297,38 +308,133 @@ describe("findInactiveJobByType", () => {
         const repository = new JobRepository({
             inMemoryOnly: true,
         });
-
-        setTimeout(
-            (): Promise<void> => {
-                return repository.addJob(
-                    new Job({
-                        queue: mock<Queue>(),
-                        id: "1",
-                        type: "type",
-                        createdAt: new Date(),
-                        updatedAt: new Date(),
-                        state: State.INACTIVE,
-                        logs: [],
-                        saved: false,
-                    })
-                );
-            },
-            1000
-        );
+        await repository.init();
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const waitingWorker: { [type: string]: WaitingWorkerRequest[] } = (repository as any).waitingWorker;
+        expect(waitingWorker["type1"]).toBeUndefined();
+        expect(waitingWorker["type2"]).toBeUndefined();
 
-        expect(waitingWorker["type"]).toBeUndefined();
-        const timeBeforeCall = new Date();
-        const findJobPromise = repository.findInactiveJobByType("type");
+        const findJobPromise1 = repository.findInactiveJobByType("type1");
         await new Promise<void>((resolve) => setTimeout(resolve, 100));
-        expect(waitingWorker["type"]).not.toBeUndefined();
-        expect(waitingWorker["type"]).toHaveLength(1);
-        const job = await findJobPromise;
-        const timeAfterCall = new Date();
-        expect(job._id).toBe("1");
-        expect(timeAfterCall.getTime() - timeBeforeCall.getTime()).toBeGreaterThan(1000); // msec
-        expect(waitingWorker["type"]).toHaveLength(0);
+        expect(waitingWorker["type1"]).not.toBeUndefined();
+        expect(waitingWorker["type1"]).toHaveLength(1);
+        expect(waitingWorker["type2"]).toBeUndefined();
+
+        const findJobPromise2 = repository.findInactiveJobByType("type1");
+        await new Promise<void>((resolve) => setTimeout(resolve, 100));
+        expect(waitingWorker["type1"]).toHaveLength(2);
+        expect(waitingWorker["type2"]).toBeUndefined();
+
+        const findJobPromise3 = repository.findInactiveJobByType("type2");
+        await new Promise<void>((resolve) => setTimeout(resolve, 100));
+        expect(waitingWorker["type1"]).toHaveLength(2);
+        expect(waitingWorker["type2"]).not.toBeUndefined();
+        expect(waitingWorker["type2"]).toHaveLength(1);
+
+        await repository.addJob(
+            new Job({
+                queue: mock<Queue>(),
+                id: "1",
+                type: "type1",
+                createdAt: new Date(),
+                updatedAt: new Date(),
+                state: State.INACTIVE,
+                logs: [],
+                saved: false,
+            })
+        );
+        const job1 = await findJobPromise1;
+        expect(job1._id).toBe("1");
+        expect(waitingWorker["type1"]).toHaveLength(1);
+        expect(waitingWorker["type2"]).toHaveLength(1);
+
+        await repository.addJob(
+            new Job({
+                queue: mock<Queue>(),
+                id: "2",
+                type: "type1",
+                createdAt: new Date(),
+                updatedAt: new Date(),
+                state: State.INACTIVE,
+                logs: [],
+                saved: false,
+            })
+        );
+        const job2 = await findJobPromise2;
+        expect(job2._id).toBe("2");
+        expect(waitingWorker["type1"]).toHaveLength(0);
+        expect(waitingWorker["type2"]).toHaveLength(1);
+
+        await repository.addJob(
+            new Job({
+                queue: mock<Queue>(),
+                id: "3",
+                type: "type2",
+                createdAt: new Date(),
+                updatedAt: new Date(),
+                state: State.INACTIVE,
+                logs: [],
+                saved: false,
+            })
+        );
+        const job3 = await findJobPromise3;
+        expect(job3._id).toBe("3");
+        expect(waitingWorker["type1"]).toHaveLength(0);
+        expect(waitingWorker["type2"]).toHaveLength(0);
+    });
+
+    test("sort", async () => {
+        const repository = new JobRepository({
+            inMemoryOnly: true,
+        });
+        await repository.init();
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const db: DataStore = (repository as any).db;
+
+        const priorities: Priority[] = [
+            Priority.LOW,
+            Priority.NORMAL,
+            Priority.MEDIUM,
+            Priority.HIGH,
+            Priority.CRITICAL,
+        ];
+
+        const createdAts = [
+            new Date(2020, 4, 3, 0, 0, 0),
+            new Date(2020, 4, 2, 0, 0, 0),
+            new Date(2020, 4, 1, 0, 0, 0),
+        ];
+
+        let id = 1;
+        for (const priority of priorities) {
+            for (const createdAt of createdAts) {
+                await dbInsert(
+                    db,
+                    {
+                        _id: id.toString(),
+                        type: "type",
+                        priority,
+                        createdAt,
+                        updatedAt: new Date(),
+                        state: State.INACTIVE,
+                    }
+                );
+
+                id++;
+            }
+        }
+
+        const sortedPriorities = [...priorities].sort((lhs, rhs) => rhs - lhs);
+        const sortedCreatedAt = [...createdAts].sort((lhs, rhs) => lhs.getTime() - rhs.getTime());
+        for (const priority of sortedPriorities) {
+            for (const createdAt of sortedCreatedAt) {
+                const job = await repository.findInactiveJobByType("type");
+                expect(job.priority).toBe(priority);
+                expect(job.createdAt).toEqual(createdAt);
+                await dbRemove(db, job._id);
+            }
+        }
     });
 });
