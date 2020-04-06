@@ -547,3 +547,42 @@ test("addJob", async () => {
         expect(jobDocAfter.logs).toEqual(job.logs);
     }
 });
+
+describe("updateJob", () => {
+    const job = new Job({
+        queue: mock<Queue>(),
+        id: "1",
+        type: "type",
+        priority: Priority.HIGH,
+        data: {
+            a: "aaa",
+            b: 123,
+            c: {
+                x: true,
+                y: {
+                    z: true,
+                },
+            },
+        },
+        createdAt: new Date(2020, 4, 1, 0, 0, 0),
+        updatedAt: new Date(2020, 4, 2, 0, 0, 0),
+        state: State.INACTIVE,
+        logs: [
+            "log1",
+            "log2",
+            "log3",
+        ],
+        saved: true,
+    });
+
+    test("not found", async () => {
+        const repository = new JobRepository({
+            inMemoryOnly: true,
+        });
+        await repository.init();
+
+        await expect(
+            repository.updateJob(job)
+        ).rejects.toThrow("update unexpected number of rows. (expected: 1, actual: 0)");
+    });
+});
