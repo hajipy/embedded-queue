@@ -636,3 +636,31 @@ describe("updateJob", () => {
         ).rejects.toThrow("update unexpected number of rows. (expected: 1, actual: 0)");
     });
 });
+
+test("removeJob", async () => {
+    const repository = new JobRepository({
+        inMemoryOnly: true,
+    });
+    await repository.init();
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const db: DataStore = (repository as any).db;
+
+    await dbInsert(
+        db,
+        {
+            _id: "1",
+            type: "type",
+            priority: Priority.NORMAL,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            state: State.INACTIVE,
+            logs: [],
+        }
+    );
+
+    await repository.removeJob("1");
+
+    const deletedDoc = await dbFind(db, "1");
+    expect(deletedDoc).toBeNull();
+});
