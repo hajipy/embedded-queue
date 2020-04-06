@@ -566,13 +566,63 @@ describe("updateJob", () => {
         },
         createdAt: new Date(2020, 4, 1, 0, 0, 0),
         updatedAt: new Date(2020, 4, 2, 0, 0, 0),
-        state: State.INACTIVE,
+        startedAt: new Date(2020, 4, 3, 0, 0, 0),
+        completedAt: new Date(2020, 4, 4, 0, 0, 0),
+        failedAt: new Date(2020, 4, 5, 0, 0, 0),
+        state: State.ACTIVE,
         logs: [
             "log1",
             "log2",
             "log3",
         ],
         saved: true,
+    });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (job as any)._duration = 123;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (job as any)._progress = 1 / 3;
+
+    test("found", async () => {
+        const repository = new JobRepository({
+            inMemoryOnly: true,
+        });
+        await repository.init();
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const db: DataStore = (repository as any).db;
+
+        await dbInsert(
+            db,
+            {
+                _id: "1",
+                type: "type",
+                priority: Priority.NORMAL,
+                createdAt: new Date(2020, 4, 6, 0, 0, 0),
+                updatedAt: new Date(2020, 4, 7, 0, 0, 0),
+                state: State.INACTIVE,
+                logs: [],
+            }
+        );
+
+        await repository.updateJob(job);
+
+        const updatedDoc = await dbFind(db, "1");
+        expect(updatedDoc).not.toBeNull();
+        if (updatedDoc !== null) {
+            expect(updatedDoc._id).toBe("1");
+            expect(updatedDoc.type).toBe(job.type);
+            expect(updatedDoc.priority).toBe(job.priority);
+            expect(updatedDoc.data).toEqual(job.data);
+            expect(updatedDoc.createdAt).toEqual(job.createdAt);
+            expect(updatedDoc.updatedAt).toEqual(job.updatedAt);
+            expect(updatedDoc.startedAt).toEqual(job.startedAt);
+            expect(updatedDoc.completedAt).toEqual(job.completedAt);
+            expect(updatedDoc.failedAt).toEqual(job.failedAt);
+            expect(updatedDoc.state).toBe(job.state);
+            expect(updatedDoc.duration).toBe(job.duration);
+            expect(updatedDoc.progress).toBe(job.progress);
+            expect(updatedDoc.logs).toEqual(job.logs);
+        }
     });
 
     test("not found", async () => {
