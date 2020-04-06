@@ -34,6 +34,6 @@ export declare class JobRepository {
     isExistJob(id: string): Promise<boolean>;
     addJob(job: Job): Promise<void>;
     updateJob(job: Job): Promise<void>;
-    removeJob(job: Job): Promise<void>;
+    removeJob(id: string): Promise<void>;
 }
 export {};

@@ -7,7 +7,7 @@ const nedb_1 = __importDefault(require("nedb"));
 const state_1 = require("./state");
 class JobRepository {
     constructor(dbOptions = {}) {
-        this.db = new nedb_1.default(Object.assign({}, dbOptions, { timestampData: true }));
+        this.db = new nedb_1.default(dbOptions);
         this.waitingWorker = {};
     }
     init() {
@@ -143,12 +143,9 @@ class JobRepository {
             });
         });
     }
-    removeJob(job) {
+    removeJob(id) {
         return new Promise((resolve, reject) => {
-            const query = {
-                _id: job.id,
-            };
-            this.db.remove(query, (error) => {
+            this.db.remove({ _id: id }, (error) => {
                 if (error) {
                     reject(error);
                     return;
