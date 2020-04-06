@@ -191,13 +191,9 @@ export class JobRepository {
         });
     }
 
-    public removeJob(job: Job): Promise<void> {
+    public removeJob(id: string): Promise<void> {
         return new Promise<void>((resolve, reject) => {
-            const query = {
-                _id: job.id,
-            };
-
-            this.db.remove(query, (error) => {
+            this.db.remove({ _id: id }, (error) => {
                 if (error) {
                     reject(error);
                     return;

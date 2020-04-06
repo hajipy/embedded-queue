@@ -308,7 +308,7 @@ export class Queue extends EventEmitter {
     /** @package */
     public async removeJob(job: Job): Promise<void> {
         try {
-            return await this.repository.removeJob(job);
+            return await this.repository.removeJob(job.id);
         }
         catch (error) {
             this.emit(Event.Error, error, job);
