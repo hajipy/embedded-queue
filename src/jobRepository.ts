@@ -31,9 +31,7 @@ export class JobRepository {
     protected waitingWorker: { [type: string]: WaitingWorkerRequest[] };
 
     public constructor(dbOptions: DbOptions = {}) {
-        this.db = new DataStore(
-            Object.assign({}, dbOptions, { timestampData: true })
-        );
+        this.db = new DataStore(dbOptions);
         this.waitingWorker = {};
     }
 
