@@ -142,10 +142,9 @@ describe("shutdown", () => {
         });
 
         worker.start(processor);
+        await setTimeoutPromise(100);
 
         expect(worker.isRunning).toBe(true);
-
-        await setTimeoutPromise(100);
 
         await worker.shutdown(1000);
 
@@ -186,10 +185,9 @@ describe("shutdown", () => {
         });
 
         worker.start(processor);
+        await setTimeoutPromise(100);
 
         expect(worker.isRunning).toBe(true);
-
-        await setTimeoutPromise(100);
 
         await worker.shutdown(500);
 
@@ -201,4 +199,60 @@ describe("shutdown", () => {
         expect(spiedJobSetStateToFailure).toHaveBeenCalledTimes(1);
         expect(spiedJobSetStateToFailure.mock.calls[0][0].message).toBe("shutdown timeout")
     });
+});
+
+test("processor failed", async () => {
+    const mockedQueue = mock<Queue>();
+
+    const job1 = new Job({
+        queue: mockedQueue,
+        id: "1",
+        type: "type",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        state: State.INACTIVE,
+        logs: [],
+        saved: true,
+    });
+    const spiedJob1SetStateToActive = jest.spyOn(job1, "setStateToActive");
+    const spiedJob1SetStateToComplete = jest.spyOn(job1, "setStateToComplete");
+    const spiedJob1SetStateToFailure = jest.spyOn(job1, "setStateToFailure");
+
+    const job2 = new Job({
+        queue: mockedQueue,
+        id: "2",
+        type: "type",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        state: State.INACTIVE,
+        logs: [],
+        saved: true,
+    });
+
+    mockedQueue.findInactiveJobByType
+        .mockResolvedValueOnce(job1)
+        .mockResolvedValueOnce(job2);
+
+    const worker = new Worker({
+        type: "type",
+        queue: mockedQueue
+    });
+
+    const processor = jest.fn().mockImplementation(async (job: Job) => {
+        switch (job.id) {
+            case "1":
+                throw new Error("Some Error");
+            case "2":
+                await worker.shutdown(100);
+                break;
+        }
+    });
+
+    worker.start(processor);
+    await setTimeoutPromise(100);
+
+    expect(spiedJob1SetStateToActive).toHaveBeenCalledTimes(1);
+    expect(spiedJob1SetStateToComplete).not.toHaveBeenCalled();
+    expect(spiedJob1SetStateToFailure).toHaveBeenCalledTimes(1);
+    expect(spiedJob1SetStateToFailure.mock.calls[0][0].message).toBe("Some Error");
 });
