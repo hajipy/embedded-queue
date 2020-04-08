@@ -38,8 +38,12 @@ test("basic", async () => {
 
     // eslint-disable-next-line @typescript-eslint/no-empty-function
     const processor = jest.fn().mockImplementation(async (job: Job) => {
-        if (job.id === "2") {
-            await worker.shutdown(100);
+        switch (job.id) {
+            case "1":
+                return 123;
+            case "2":
+                await worker.shutdown(100);
+                break;
         }
     });
 
@@ -47,12 +51,13 @@ test("basic", async () => {
 
     expect(worker.isRunning).toBe(true);
 
-    await setTimeoutPromise(1000); // wait for shutting down queue
+    await setTimeoutPromise(500); // wait for shutting down queue
 
     expect(worker.isRunning).toBe(false);
-
+    expect(processor).toHaveBeenCalledTimes(2);
     expect(spiedJobSetStateToActive).toHaveBeenCalledTimes(1);
     expect(spiedJobSetStateToComplete).toHaveBeenCalledTimes(1);
+    expect(spiedJobSetStateToComplete.mock.calls[0][0]).toBe(123);
     expect(spiedJobSetStateToFailure).not.toHaveBeenCalled();
 });
 
