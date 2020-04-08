@@ -33,9 +33,6 @@ test("Basic", async () => {
         logs: [],
         saved: true,
     });
-    const spiedJob2SetStateToActive = jest.spyOn(job2, "setStateToActive");
-    const spiedJob2SetStateToComplete = jest.spyOn(job2, "setStateToComplete");
-    const spiedJob2SetStateToFailure = jest.spyOn(job2, "setStateToFailure");
 
     mockedQueue.findInactiveJobByType
         .mockResolvedValueOnce(job1)
@@ -70,11 +67,6 @@ test("Basic", async () => {
     expect(spiedJob1SetStateToActive).toHaveBeenCalledTimes(1);
     expect(spiedJob1SetStateToComplete).toHaveBeenCalledTimes(1);
     expect(spiedJob1SetStateToFailure).not.toHaveBeenCalled();
-
-    expect(spiedJob2SetStateToActive).toHaveBeenCalledTimes(1);
-    expect(spiedJob2SetStateToComplete).not.toHaveBeenCalled();
-    expect(spiedJob2SetStateToFailure).toHaveBeenCalledTimes(1);
-    expect(spiedJob2SetStateToFailure.mock.calls[0][0].message).toBe("shutdown timeout")
 });
 
 describe("shutdown", () => {
