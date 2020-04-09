@@ -1,5 +1,4 @@
 import { mock, mockReset } from "jest-mock-extended";
-import { mocked } from "ts-jest";
 
 import { Event, Job, Priority, Queue, State } from "../src";
 
