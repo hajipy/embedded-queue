@@ -1,7 +1,8 @@
 import uuid from "uuid/v4";
 
-import { Priority, Queue, State } from "../src";
+import { Job, Priority, Queue, State } from "../src";
 import { JobRepository, NeDbJob } from "../src/jobRepository";
+import exp = require("constants");
 
 jest.mock("uuid/v4");
 
@@ -277,4 +278,188 @@ test("listJobs", async () => {
     }
     expect(mockedRepositoryListJobs).toHaveBeenCalledTimes(1);
     expect(mockedRepositoryListJobs.mock.calls[0][0]).toBe(state);
+});
+
+describe("removeJobById", () => {
+    test("found", async () => {
+        const queue = await Queue.createQueue({
+            inMemoryOnly: true,
+        });
+
+        const nedbJob: NeDbJob = {
+            _id: "1",
+            type: "type",
+            priority: Priority.NORMAL,
+            data: {
+                a: "aaa",
+                b: 123,
+                c: {
+                    x: true,
+                    y: {
+                        z: true,
+                    },
+                },
+            },
+            createdAt: new Date(2020, 4, 1, 0, 0, 0),
+            updatedAt: new Date(2020, 4, 2, 0, 0, 0),
+            startedAt: new Date(2020, 4, 3, 0, 0, 0),
+            completedAt: new Date(2020, 4, 4, 0, 0, 0),
+            failedAt: new Date(2020, 4, 5, 0, 0, 0),
+            state: State.INACTIVE,
+            duration: 123,
+            progress: 1 / 3,
+            logs: [
+                "First Log",
+                "Second Log",
+                "Third Log",
+            ],
+        };
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const repository = (queue as any).repository as JobRepository;
+        const mockedRepositoryFindJob = jest.fn().mockResolvedValue(nedbJob);
+        repository.findJob = mockedRepositoryFindJob;
+
+        const id = "1";
+        await queue.removeJobById(id);
+
+        expect(mockedRepositoryFindJob).toHaveBeenCalledTimes(1);
+        expect(mockedRepositoryFindJob.mock.calls[0][0]).toBe(id);
+    });
+
+    test("not found", async () => {
+        const queue = await Queue.createQueue({
+            inMemoryOnly: true,
+        });
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const repository = (queue as any).repository as JobRepository;
+        const mockedRepositoryFindJob = jest.fn().mockResolvedValue(null);
+        repository.findJob = mockedRepositoryFindJob;
+
+        const id = "1";
+        await expect(
+            queue.removeJobById(id)
+        ).rejects.toThrow();
+
+        expect(mockedRepositoryFindJob).toHaveBeenCalledTimes(1);
+        expect(mockedRepositoryFindJob.mock.calls[0][0]).toBe(id);
+    });
+});
+
+test("removeJobsByCallback", async () => {
+    const queue = await Queue.createQueue({
+        inMemoryOnly: true,
+    });
+
+    const nedbJobs: NeDbJob[] = [
+        {
+            _id: "1",
+            type: "type",
+            priority: Priority.NORMAL,
+            data: {
+                a: "aaa",
+                b: 123,
+                c: {
+                    x: true,
+                    y: {
+                        z: true,
+                    },
+                },
+            },
+            createdAt: new Date(2020, 4, 1, 0, 0, 0),
+            updatedAt: new Date(2020, 4, 2, 0, 0, 0),
+            startedAt: new Date(2020, 4, 3, 0, 0, 0),
+            completedAt: new Date(2020, 4, 4, 0, 0, 0),
+            failedAt: new Date(2020, 4, 5, 0, 0, 0),
+            state: State.INACTIVE,
+            duration: 123,
+            progress: 1 / 3,
+            logs: [
+                "First Log",
+                "Second Log",
+                "Third Log",
+            ],
+        },
+        {
+            _id: "2",
+            type: "type",
+            priority: Priority.HIGH,
+            createdAt: new Date(2020, 4, 6, 0, 0, 0),
+            updatedAt: new Date(2020, 4, 7, 0, 0, 0),
+            startedAt: new Date(2020, 4, 8, 0, 0, 0),
+            completedAt: new Date(2020, 4, 9, 0, 0, 0),
+            failedAt: new Date(2020, 4, 10, 0, 0, 0),
+            state: State.ACTIVE,
+            duration: 234,
+            progress: 2 / 3,
+            logs: [
+            ],
+        },
+        {
+            _id: "3",
+            type: "type",
+            priority: Priority.LOW,
+            createdAt: new Date(2020, 4, 11, 0, 0, 0),
+            updatedAt: new Date(2020, 4, 12, 0, 0, 0),
+            startedAt: new Date(2020, 4, 13, 0, 0, 0),
+            completedAt: new Date(2020, 14, 9, 0, 0, 0),
+            failedAt: new Date(2020, 4, 15, 0, 0, 0),
+            state: State.COMPLETE,
+            duration: 345,
+            progress: 3 / 4,
+            logs: [
+            ],
+        },
+    ];
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const repository = (queue as any).repository as JobRepository;
+    const mockedRepositoryListJobs = jest.fn().mockResolvedValue(nedbJobs);
+    repository.listJobs = mockedRepositoryListJobs;
+
+    const removeCallback = jest.fn().mockImplementation((job: Job) => job.id !== "2");
+
+    const removedJobs = await queue.removeJobsByCallback(removeCallback);
+
+    expect(removedJobs).toHaveLength(2);
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect((removedJobs[0] as any).queue).toBe(queue);
+    expect(removedJobs[0].id).toBe(nedbJobs[0]._id);
+    expect(removedJobs[0].type).toBe(nedbJobs[0].type);
+    expect(removedJobs[0].priority).toBe(nedbJobs[0].priority);
+    expect(removedJobs[0].data).toEqual(nedbJobs[0].data);
+    expect(removedJobs[0].createdAt).toEqual(nedbJobs[0].createdAt);
+    expect(removedJobs[0].updatedAt).toEqual(nedbJobs[0].updatedAt);
+    expect(removedJobs[0].startedAt).toEqual(nedbJobs[0].startedAt);
+    expect(removedJobs[0].completedAt).toEqual(nedbJobs[0].completedAt);
+    expect(removedJobs[0].failedAt).toEqual(nedbJobs[0].failedAt);
+    expect(removedJobs[0].state).toBe(nedbJobs[0].state);
+    expect(removedJobs[0].logs).toEqual(nedbJobs[0].logs);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect((removedJobs[0] as any)._saved).toBe(true);
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect((removedJobs[1] as any).queue).toBe(queue);
+    expect(removedJobs[1].id).toBe(nedbJobs[2]._id);
+    expect(removedJobs[1].type).toBe(nedbJobs[2].type);
+    expect(removedJobs[1].priority).toBe(nedbJobs[2].priority);
+    expect(removedJobs[1].data).toEqual(nedbJobs[2].data);
+    expect(removedJobs[1].createdAt).toEqual(nedbJobs[2].createdAt);
+    expect(removedJobs[1].updatedAt).toEqual(nedbJobs[2].updatedAt);
+    expect(removedJobs[1].startedAt).toEqual(nedbJobs[2].startedAt);
+    expect(removedJobs[1].completedAt).toEqual(nedbJobs[2].completedAt);
+    expect(removedJobs[1].failedAt).toEqual(nedbJobs[2].failedAt);
+    expect(removedJobs[1].state).toBe(nedbJobs[2].state);
+    expect(removedJobs[1].logs).toEqual(nedbJobs[2].logs);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect((removedJobs[1] as any)._saved).toBe(true);
+
+    expect(mockedRepositoryListJobs).toHaveBeenCalledTimes(1);
+
+    expect(removeCallback).toHaveBeenCalledTimes(3);
+    expect((removeCallback.mock.calls[0][0] as Job).id).toBe(nedbJobs[0]._id);
+    expect((removeCallback.mock.calls[1][0] as Job).id).toBe(nedbJobs[1]._id);
+    expect((removeCallback.mock.calls[2][0] as Job).id).toBe(nedbJobs[2]._id);
 });
