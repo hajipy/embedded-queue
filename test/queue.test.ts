@@ -104,47 +104,33 @@ describe("findJob", () => {
             inMemoryOnly: true,
         });
 
-        const id = "1";
-        const type = "type";
-        const priority = Priority.NORMAL;
-        const data = {
-            a: "aaa",
-            b: 123,
-            c: {
-                x: true,
-                y: {
-                    z: true,
+        const nedbJob: NeDbJob = {
+            _id: "1",
+            type: "type",
+            priority: Priority.NORMAL,
+            data: {
+                a: "aaa",
+                b: 123,
+                c: {
+                    x: true,
+                    y: {
+                        z: true,
+                    },
                 },
             },
-        };
-        const createdAt = new Date(2020, 4, 1, 0, 0, 0);
-        const updatedAt = new Date(2020, 4, 2, 0, 0, 0);
-        const startedAt = new Date(2020, 4, 3, 0, 0, 0);
-        const completedAt = new Date(2020, 4, 4, 0, 0, 0);
-        const failedAt = new Date(2020, 4, 5, 0, 0, 0);
-        const state = State.INACTIVE;
-        const duration = 123;
-        const progress = 1 / 3;
-        const logs = [
-            "First Log",
-            "Second Log",
-            "Third Log",
-        ];
-
-        const nedbJob: NeDbJob = {
-            _id: id,
-            type,
-            priority,
-            data,
-            createdAt,
-            updatedAt,
-            startedAt,
-            completedAt,
-            failedAt,
-            state,
-            duration,
-            progress,
-            logs,
+            createdAt: new Date(2020, 4, 1, 0, 0, 0),
+            updatedAt: new Date(2020, 4, 2, 0, 0, 0),
+            startedAt: new Date(2020, 4, 3, 0, 0, 0),
+            completedAt: new Date(2020, 4, 4, 0, 0, 0),
+            failedAt: new Date(2020, 4, 5, 0, 0, 0),
+            state: State.INACTIVE,
+            duration: 123,
+            progress: 1 / 3,
+            logs: [
+                "First Log",
+                "Second Log",
+                "Third Log",
+            ],
         };
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -152,23 +138,24 @@ describe("findJob", () => {
         const mockedRepositoryFindJob = jest.fn().mockResolvedValue(nedbJob);
         repository.findJob = mockedRepositoryFindJob;
 
+        const id = "1";
         const job = await queue.findJob(id);
 
         expect(job).not.toBeNull();
         if (job !== null) {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             expect((job as any).queue).toBe(queue);
-            expect(job.id).toBe(id);
-            expect(job.type).toBe(type);
-            expect(job.priority).toBe(priority);
-            expect(job.data).toEqual(data);
-            expect(job.createdAt).toEqual(createdAt);
-            expect(job.updatedAt).toEqual(updatedAt);
-            expect(job.startedAt).toEqual(startedAt);
-            expect(job.completedAt).toEqual(completedAt);
-            expect(job.failedAt).toEqual(failedAt);
-            expect(job.state).toBe(state);
-            expect(job.logs).toEqual(logs);
+            expect(job.id).toBe(nedbJob._id);
+            expect(job.type).toBe(nedbJob.type);
+            expect(job.priority).toBe(nedbJob.priority);
+            expect(job.data).toEqual(nedbJob.data);
+            expect(job.createdAt).toEqual(nedbJob.createdAt);
+            expect(job.updatedAt).toEqual(nedbJob.updatedAt);
+            expect(job.startedAt).toEqual(nedbJob.startedAt);
+            expect(job.completedAt).toEqual(nedbJob.completedAt);
+            expect(job.failedAt).toEqual(nedbJob.failedAt);
+            expect(job.state).toBe(nedbJob.state);
+            expect(job.logs).toEqual(nedbJob.logs);
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             expect((job as any)._saved).toBe(true);
         }
