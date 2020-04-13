@@ -69,3 +69,52 @@ test("Basic Usage", async () => {
     // shutdown queue
     setTimeout(async () => { await queue.shutdown(100); }, 1);
 });
+
+describe("Event Handlers", () => {
+    test("Enqueue", async () => {
+        const queue = await Queue.createQueue({ inMemoryOnly: true });
+
+        const enqueueHandler = jest.fn();
+        queue.on(Event.Enqueue, enqueueHandler);
+
+        const createdJob = await queue.createJob({ type: "SomeType" });
+
+        expect(enqueueHandler).toHaveBeenCalledTimes(1);
+        expect(enqueueHandler.mock.calls[0][0].id).toBe(createdJob.id);
+    });
+
+    test("Start", async () => {
+        const queue = await Queue.createQueue({ inMemoryOnly: true });
+
+        const startHandler = jest.fn();
+        queue.on(Event.Start, startHandler);
+
+        const createdJob = await queue.createJob({ type: "SomeType" });
+
+        // eslint-disable-next-line @typescript-eslint/no-empty-function
+        queue.process("SomeType", async () => {}, 1);
+
+        await setTimeoutPromise(100);
+
+        expect(startHandler).toHaveBeenCalledTimes(1);
+        expect(startHandler.mock.calls[0][0].id).toBe(createdJob.id);
+    });
+
+    test("Failure", async () => {
+        const queue = await Queue.createQueue({ inMemoryOnly: true });
+
+        const failureHandler = jest.fn();
+        queue.on(Event.Failure, failureHandler);
+
+        const createdJob = await queue.createJob({ type: "SomeType" });
+
+        const error = new Error("SomeError");
+        queue.process("SomeType", async () => { throw error; }, 1);
+
+        await setTimeoutPromise(100);
+
+        expect(failureHandler).toHaveBeenCalledTimes(1);
+        expect(failureHandler.mock.calls[0][0].id).toBe(createdJob.id);
+        expect(failureHandler.mock.calls[0][1]).toBe(error);
+    });
+});
