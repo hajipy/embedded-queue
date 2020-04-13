@@ -22,6 +22,8 @@ test("constructor", () => {
     const completedAt = new Date(2020, 4, 4, 0, 0, 0);
     const failedAt = new Date(2020, 4, 5, 0, 0, 0);
     const state = State.INACTIVE;
+    const duration = 123;
+    const progress = 1 / 3;
     const logs = [
         "log1",
         "log2",
@@ -40,6 +42,8 @@ test("constructor", () => {
         completedAt,
         failedAt,
         state,
+        duration,
+        progress,
         logs,
         saved: true,
     });
@@ -53,6 +57,8 @@ test("constructor", () => {
     expect(job.completedAt).toBe(completedAt);
     expect(job.failedAt).toBe(failedAt);
     expect(job.state).toBe(state);
+    expect(job.duration).toBe(duration);
+    expect(job.progress).toBe(progress);
     expect(job.logs).toEqual(logs);
 });
 

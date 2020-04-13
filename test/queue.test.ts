@@ -156,6 +156,8 @@ describe("findJob", () => {
             expect(job.completedAt).toEqual(nedbJob.completedAt);
             expect(job.failedAt).toEqual(nedbJob.failedAt);
             expect(job.state).toBe(nedbJob.state);
+            expect(job.duration).toBe(nedbJob.duration);
+            expect(job.progress).toBe(nedbJob.progress);
             expect(job.logs).toEqual(nedbJob.logs);
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             expect((job as any)._saved).toBe(true);
@@ -272,6 +274,8 @@ test("listJobs", async () => {
         expect(job.completedAt).toEqual(nedbJobs[index].completedAt);
         expect(job.failedAt).toEqual(nedbJobs[index].failedAt);
         expect(job.state).toBe(nedbJobs[index].state);
+        expect(job.duration).toBe(nedbJobs[index].duration);
+        expect(job.progress).toBe(nedbJobs[index].progress);
         expect(job.logs).toEqual(nedbJobs[index].logs);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         expect((job as any)._saved).toBe(true);
@@ -436,6 +440,8 @@ test("removeJobsByCallback", async () => {
     expect(removedJobs[0].completedAt).toEqual(nedbJobs[0].completedAt);
     expect(removedJobs[0].failedAt).toEqual(nedbJobs[0].failedAt);
     expect(removedJobs[0].state).toBe(nedbJobs[0].state);
+    expect(removedJobs[0].duration).toBe(nedbJobs[0].duration);
+    expect(removedJobs[0].progress).toBe(nedbJobs[0].progress);
     expect(removedJobs[0].logs).toEqual(nedbJobs[0].logs);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect((removedJobs[0] as any)._saved).toBe(true);
@@ -452,6 +458,8 @@ test("removeJobsByCallback", async () => {
     expect(removedJobs[1].completedAt).toEqual(nedbJobs[2].completedAt);
     expect(removedJobs[1].failedAt).toEqual(nedbJobs[2].failedAt);
     expect(removedJobs[1].state).toBe(nedbJobs[2].state);
+    expect(removedJobs[1].duration).toBe(nedbJobs[2].duration);
+    expect(removedJobs[1].progress).toBe(nedbJobs[2].progress);
     expect(removedJobs[1].logs).toEqual(nedbJobs[2].logs);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect((removedJobs[1] as any)._saved).toBe(true);
