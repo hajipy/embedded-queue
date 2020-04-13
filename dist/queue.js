@@ -92,6 +92,8 @@ class Queue extends events_1.EventEmitter {
                 completedAt: doc.completedAt,
                 failedAt: doc.failedAt,
                 state: doc.state,
+                duration: doc.duration,
+                progress: doc.progress,
                 logs: doc.logs,
                 saved: true,
             });
@@ -117,6 +119,8 @@ class Queue extends events_1.EventEmitter {
                         completedAt: doc.completedAt,
                         failedAt: doc.failedAt,
                         state: doc.state,
+                        duration: doc.duration,
+                        progress: doc.progress,
                         logs: doc.logs,
                         saved: true,
                     });
@@ -152,6 +156,8 @@ class Queue extends events_1.EventEmitter {
             completedAt: doc.completedAt,
             failedAt: doc.failedAt,
             state: doc.state,
+            duration: doc.duration,
+            progress: doc.progress,
             logs: doc.logs,
             saved: true,
         });
@@ -181,6 +187,8 @@ class Queue extends events_1.EventEmitter {
                     completedAt: doc.completedAt,
                     failedAt: doc.failedAt,
                     state: doc.state,
+                    duration: doc.duration,
+                    progress: doc.progress,
                     logs: doc.logs,
                     saved: true,
                 });
@@ -214,6 +222,8 @@ class Queue extends events_1.EventEmitter {
                     failedAt: doc.failedAt,
                     state: doc.state,
                     logs: doc.logs,
+                    duration: doc.duration,
+                    progress: doc.progress,
                     saved: true,
                 });
             });
