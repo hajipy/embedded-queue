@@ -13,6 +13,8 @@ export interface JobConstructorData {
     completedAt?: Date;
     failedAt?: Date;
     state?: State;
+    duration?: number;
+    progress?: number;
     logs: string[];
     saved: boolean;
 }

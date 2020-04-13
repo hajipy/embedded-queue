@@ -15,6 +15,8 @@ export interface JobConstructorData {
     completedAt?: Date;
     failedAt?: Date;
     state?: State;
+    duration?: number;
+    progress?: number;
     logs: string[];
     saved: boolean;
 }
@@ -97,6 +99,8 @@ export class Job {
         this._completedAt = data.completedAt;
         this._failedAt = data.failedAt;
         this._logs = [...data.logs];
+        this._duration = data.duration;
+        this._progress = data.progress;
         this._saved = data.saved;
     }
 
