@@ -29,11 +29,6 @@ class Worker {
                 resolve();
                 return;
             }
-            // すでにシャットダウン中なら、何もしないで終了
-            if (this.shutdownInfo !== null) {
-                resolve();
-                return;
-            }
             // 非実行状態に移行
             this._isRunning = false;
             // 処理中のジョブがなければ、シャットダウン完了
@@ -44,7 +39,9 @@ class Worker {
             // タイムアウトまでに処理中のジョブが完了しなければジョブを失敗にする
             this.shutdownInfo = {
                 timer: setTimeout(async () => {
+                    // istanbul ignore if
                     if (this._currentJob === null) {
+                        console.warn(`this._currentJob is null`);
                         return;
                     }
                     await this._currentJob.setStateToFailure(new Error("shutdown timeout"));
@@ -83,6 +80,7 @@ class Worker {
         })();
     }
     async process(processor) {
+        // istanbul ignore if
         if (this._currentJob === null) {
             console.warn(`this._currentJob is null`);
             return;
@@ -97,12 +95,9 @@ class Worker {
             this._currentJob = null;
             return;
         }
-        // 実行中じゃなければシャットダウンが進行中なので、処理を中断する
-        if (this._isRunning === false) {
-            this._currentJob = null;
+        if (this._currentJob === null) {
             return;
         }
-        // ジョブが削除されていれば、処理を中断する
         if (await this._currentJob.isExist() === false) {
             this._currentJob = null;
             return;
