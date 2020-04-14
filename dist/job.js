@@ -65,7 +65,7 @@ class Job {
         this._logs.push(message);
         this._updatedAt = new Date();
         await this.update();
-        this.queue.emit(event_1.Event.Log, this);
+        this.queue.emit(event_1.Event.Log, this, message);
     }
     async save() {
         if (this._saved) {
@@ -86,7 +86,7 @@ class Job {
         this._priority = value;
         this._updatedAt = new Date();
         await this.update();
-        this.queue.emit(event_1.Event.Priority, this);
+        this.queue.emit(event_1.Event.Priority, this, value);
     }
     async isExist() {
         return this.queue.isExistJob(this);
