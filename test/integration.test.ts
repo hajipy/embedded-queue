@@ -1,6 +1,6 @@
 import * as util from "util";
 
-import { Event, Job, Queue, State } from "../src";
+import { Event, Job, Priority, Queue, State } from "../src";
 
 const setTimeoutPromise = util.promisify(setTimeout);
 
@@ -116,5 +116,115 @@ describe("Event Handlers", () => {
         expect(failureHandler).toHaveBeenCalledTimes(1);
         expect(failureHandler.mock.calls[0][0].id).toBe(createdJob.id);
         expect(failureHandler.mock.calls[0][1]).toBe(error);
+    });
+
+    test("Complete", async () => {
+        const queue = await Queue.createQueue({ inMemoryOnly: true });
+
+        const completeHandler = jest.fn();
+        queue.on(Event.Complete, completeHandler);
+
+        const createdJob = await queue.createJob({ type: "SomeType" });
+
+        const result = 123;
+        queue.process("SomeType", async () => result, 1);
+
+        await setTimeoutPromise(100);
+
+        expect(completeHandler).toHaveBeenCalledTimes(1);
+        expect(completeHandler.mock.calls[0][0].id).toBe(createdJob.id);
+        expect(completeHandler.mock.calls[0][1]).toBe(result);
+    });
+
+    test("Remove", async () => {
+        const queue = await Queue.createQueue({ inMemoryOnly: true });
+
+        const removeHandler = jest.fn();
+        queue.on(Event.Remove, removeHandler);
+
+        const createdJob = await queue.createJob({ type: "SomeType" });
+
+        await queue.removeJobById(createdJob.id);
+
+        expect(removeHandler).toHaveBeenCalledTimes(1);
+        expect(removeHandler.mock.calls[0][0].id).toBe(createdJob.id);
+    });
+
+    test.skip("Error", async () => {
+        // Skip it because I can't come up with a good test.
+    });
+
+    test("Progress", async () => {
+        const queue = await Queue.createQueue({ inMemoryOnly: true });
+
+        const progressHandler = jest.fn();
+        queue.on(Event.Progress, progressHandler);
+
+        const createdJob = await queue.createJob({ type: "SomeType" });
+
+        queue.process(
+            "SomeType",
+            async (job: Job) => {
+                await job.setProgress(1, 3);
+                await job.setProgress(2, 3);
+                await job.setProgress(3, 3);
+            },
+            1
+        );
+
+        await setTimeoutPromise(100);
+
+        expect(progressHandler).toHaveBeenCalledTimes(3);
+        expect(progressHandler.mock.calls[0][0].id).toBe(createdJob.id);
+        expect(progressHandler.mock.calls[0][1]).toBeCloseTo(1 / 3 * 100);
+        expect(progressHandler.mock.calls[1][0].id).toBe(createdJob.id);
+        expect(progressHandler.mock.calls[1][1]).toBeCloseTo(2 / 3 * 100);
+        expect(progressHandler.mock.calls[2][0].id).toBe(createdJob.id);
+        expect(progressHandler.mock.calls[2][1]).toBeCloseTo(3 / 3 * 100);
+    });
+
+    test("Log", async () => {
+        const queue = await Queue.createQueue({ inMemoryOnly: true });
+
+        const logHandler = jest.fn();
+        queue.on(Event.Log, logHandler);
+
+        const createdJob = await queue.createJob({ type: "SomeType" });
+
+        queue.process(
+            "SomeType",
+            async (job: Job) => {
+                await job.addLog("First Log");
+                await job.addLog("Second Log");
+                await job.addLog("Third Log");
+            },
+            1
+        );
+
+        await setTimeoutPromise(100);
+
+        expect(logHandler).toHaveBeenCalledTimes(3);
+        expect(logHandler.mock.calls[0][0].id).toBe(createdJob.id);
+        expect(logHandler.mock.calls[0][1]).toBe("First Log");
+        expect(logHandler.mock.calls[1][0].id).toBe(createdJob.id);
+        expect(logHandler.mock.calls[1][1]).toBe("Second Log");
+        expect(logHandler.mock.calls[2][0].id).toBe(createdJob.id);
+        expect(logHandler.mock.calls[2][1]).toBe("Third Log");
+    });
+
+    test("Priority", async () => {
+        const queue = await Queue.createQueue({ inMemoryOnly: true });
+
+        const priorityHandler = jest.fn();
+        queue.on(Event.Priority, priorityHandler);
+
+        const createdJob = await queue.createJob({ type: "SomeType", priority: Priority.NORMAL });
+
+        const newPriority = Priority.HIGH;
+        await createdJob.setPriority(newPriority);
+
+        expect(priorityHandler).toHaveBeenCalledTimes(1);
+        expect(priorityHandler.mock.calls[0][0].id).toBe(createdJob.id);
+        expect(priorityHandler.mock.calls[0][1]).toBe(newPriority);
     });
 });
