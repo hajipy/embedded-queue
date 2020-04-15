@@ -89,11 +89,10 @@ describe("Event Handlers", () => {
         const startHandler = jest.fn();
         queue.on(Event.Start, startHandler);
 
-        const createdJob = await queue.createJob({ type: "SomeType" });
-
         // eslint-disable-next-line @typescript-eslint/no-empty-function
         queue.process("SomeType", async () => {}, 1);
 
+        const createdJob = await queue.createJob({ type: "SomeType" });
         await setTimeoutPromise(100);
 
         expect(startHandler).toHaveBeenCalledTimes(1);
@@ -106,11 +105,10 @@ describe("Event Handlers", () => {
         const failureHandler = jest.fn();
         queue.on(Event.Failure, failureHandler);
 
-        const createdJob = await queue.createJob({ type: "SomeType" });
-
         const error = new Error("SomeError");
         queue.process("SomeType", async () => { throw error; }, 1);
 
+        const createdJob = await queue.createJob({ type: "SomeType" });
         await setTimeoutPromise(100);
 
         expect(failureHandler).toHaveBeenCalledTimes(1);
@@ -124,11 +122,10 @@ describe("Event Handlers", () => {
         const completeHandler = jest.fn();
         queue.on(Event.Complete, completeHandler);
 
-        const createdJob = await queue.createJob({ type: "SomeType" });
-
         const result = 123;
         queue.process("SomeType", async () => result, 1);
 
+        const createdJob = await queue.createJob({ type: "SomeType" });
         await setTimeoutPromise(100);
 
         expect(completeHandler).toHaveBeenCalledTimes(1);
@@ -160,8 +157,6 @@ describe("Event Handlers", () => {
         const progressHandler = jest.fn();
         queue.on(Event.Progress, progressHandler);
 
-        const createdJob = await queue.createJob({ type: "SomeType" });
-
         queue.process(
             "SomeType",
             async (job: Job) => {
@@ -172,6 +167,7 @@ describe("Event Handlers", () => {
             1
         );
 
+        const createdJob = await queue.createJob({ type: "SomeType" });
         await setTimeoutPromise(100);
 
         expect(progressHandler).toHaveBeenCalledTimes(3);
@@ -226,5 +222,90 @@ describe("Event Handlers", () => {
         expect(priorityHandler).toHaveBeenCalledTimes(1);
         expect(priorityHandler.mock.calls[0][0].id).toBe(createdJob.id);
         expect(priorityHandler.mock.calls[0][1]).toBe(newPriority);
+    });
+});
+
+test("Create Job", async () => {
+    const queue = await Queue.createQueue({ inMemoryOnly: true });
+
+    const type = "SomeType";
+    const priority = Priority.NORMAL;
+    const data = {
+        a: "aaa",
+        b: 123,
+        c: {
+            x: true,
+            y: {
+                z: true,
+            },
+        },
+    };
+
+    const createdJob = await queue.createJob({ type, priority, data });
+
+    expect(createdJob.id).not.toBe("");
+    expect(createdJob.type).toBe(type);
+    expect(createdJob.priority).toBe(priority);
+    expect(createdJob.data).toEqual(data);
+});
+
+test("Set Job Processor", async () => {
+    const queue = await Queue.createQueue({ inMemoryOnly: true });
+
+    const someTypeWorkerCount = 3
+    // eslint-disable-next-line @typescript-eslint/no-empty-function
+    queue.process("SomeType", async () => {}, someTypeWorkerCount);
+
+    const otherTypeWorkerCount = 5;
+    // eslint-disable-next-line @typescript-eslint/no-empty-function
+    queue.process("OtherType", async () => {}, otherTypeWorkerCount);
+
+    expect(queue.workers).toHaveLength(someTypeWorkerCount + otherTypeWorkerCount);
+    expect(queue.workers.filter((w) => w.type === "SomeType")).toHaveLength(someTypeWorkerCount);
+    expect(queue.workers.filter((w) => w.type === "OtherType")).toHaveLength(otherTypeWorkerCount);
+    expect(queue.workers.every((w) => w.isRunning)).toBe(true);
+});
+
+test("Shutdown Queue", async () => {
+    const queue = await Queue.createQueue({ inMemoryOnly: true });
+
+    const processingMilliseconds = 1000;
+    queue.process("SomeType", () => setTimeoutPromise(processingMilliseconds), 1);
+
+    expect(queue.workers).toHaveLength(1);
+
+    await queue.createJob({ type: "SomeType" });
+
+    const before = new Date();
+    const timeoutMilliseconds = 100;
+    await queue.shutdown(timeoutMilliseconds);
+    const after = new Date();
+
+    expect(queue.workers).toHaveLength(0);
+    const shutdownMilliseconds = after.getTime() - before.getTime();
+    expect(shutdownMilliseconds).toBeGreaterThanOrEqual(timeoutMilliseconds);
+    expect(shutdownMilliseconds).toBeLessThan(processingMilliseconds);
+});
+
+describe("Queue API", () => {
+    test("findJob", async () => {
+        const queue = await Queue.createQueue({ inMemoryOnly: true });
+
+        const createdJobs = await Promise.all([
+            queue.createJob({ type: "SomeType" }),
+            queue.createJob({ type: "SomeType" }),
+            queue.createJob({ type: "SomeType" }),
+        ]);
+
+        for (const createdJob of createdJobs) {
+            const foundJob = await queue.findJob(createdJob.id);
+            expect(foundJob).not.toBeNull();
+            if (foundJob !== null) {
+                expect(foundJob.id).toBe(createdJob.id);
+            }
+        }
+
+        const notFoundJob = await queue.findJob("invalid-id");
+        expect(notFoundJob).toBeNull();
     });
 });
