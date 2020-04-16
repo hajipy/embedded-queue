@@ -92,12 +92,9 @@ class Worker {
             this._currentJob = null;
             return;
         }
-        // 実行中じゃなければシャットダウンが進行中なので、処理を中断する
-        if (this._isRunning === false) {
-            this._currentJob = null;
+        if (this._currentJob === null) {
             return;
         }
-        // ジョブが削除されていれば、処理を中断する
         if (await this._currentJob.isExist() === false) {
             this._currentJob = null;
             return;
