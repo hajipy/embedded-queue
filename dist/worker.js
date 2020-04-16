@@ -29,11 +29,6 @@ class Worker {
                 resolve();
                 return;
             }
-            // すでにシャットダウン中なら、何もしないで終了
-            if (this.shutdownInfo !== null) {
-                resolve();
-                return;
-            }
             // 非実行状態に移行
             this._isRunning = false;
             // 処理中のジョブがなければ、シャットダウン完了
