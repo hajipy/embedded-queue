@@ -308,4 +308,99 @@ describe("Queue API", () => {
         const notFoundJob = await queue.findJob("invalid-id");
         expect(notFoundJob).toBeNull();
     });
+
+    test("listJobs", async () => {
+        const queue = await Queue.createQueue({ inMemoryOnly: true });
+
+        const createdJobs: Job[] = [];
+        createdJobs.push(await queue.createJob({ type: "SomeType" }));
+        await setTimeoutPromise(100);
+        createdJobs.push(await queue.createJob({ type: "SomeType" }));
+        await setTimeoutPromise(100);
+        createdJobs.push(await queue.createJob({ type: "SomeType" }));
+
+        const jobs = await queue.listJobs();
+
+        expect(jobs).toHaveLength(createdJobs.length);
+        for (let i = 0; i < jobs.length; i++) {
+            expect(jobs[i].id).toBe(createdJobs[i].id);
+        }
+    });
+
+    test("removeJobById", async () => {
+        const queue = await Queue.createQueue({ inMemoryOnly: true });
+
+        const createdJobs = await Promise.all([
+            queue.createJob({ type: "SomeType" }),
+            queue.createJob({ type: "SomeType" }),
+            queue.createJob({ type: "SomeType" }),
+        ]);
+
+        for (let i = 0; i < createdJobs.length; i++) {
+            expect(await queue.listJobs()).toHaveLength(createdJobs.length - i);
+
+            await queue.removeJobById(createdJobs[i].id);
+
+            const job = await queue.findJob(createdJobs[i].id);
+            expect(job).toBeNull();
+
+            expect(await queue.listJobs()).toHaveLength(createdJobs.length - i - 1);
+        }
+    });
+
+    test("removeJobsByCallback", async () => {
+        const queue = await Queue.createQueue({ inMemoryOnly: true });
+
+        const createdJobs: Job[] = [];
+        createdJobs.push(await queue.createJob({ type: "SomeType" }));
+        await setTimeoutPromise(100);
+        createdJobs.push(await queue.createJob({ type: "SomeType" }));
+        await setTimeoutPromise(100);
+        createdJobs.push(await queue.createJob({ type: "SomeType" }));
+
+        await queue.removeJobsByCallback((job: Job) => job.id !== createdJobs[1].id);
+
+        const jobs = await queue.listJobs();
+
+        expect(jobs).toHaveLength(1);
+        expect(jobs[0].id).toBe(createdJobs[1].id);
+    });
+});
+
+describe("Job API", () => {
+    test("setProgress", async () => {
+        expect.assertions(3);
+
+        const queue = await Queue.createQueue({ inMemoryOnly: true });
+
+        queue.process(
+            "SomeType",
+            async (job: Job) => {
+                await job.setProgress(1, 3);
+                expect(job.progress).toBeCloseTo(1 / 3 * 100);
+
+                await job.setProgress(2, 3);
+                expect(job.progress).toBeCloseTo(2 / 3 * 100);
+
+                await job.setProgress(3, 3);
+                expect(job.progress).toBeCloseTo(3 / 3 * 100);
+            },
+            1
+        );
+
+        await queue.createJob({ type: "SomeType" });
+        await setTimeoutPromise(100);
+    });
+
+    test("remove", async () => {
+        const queue = await Queue.createQueue({ inMemoryOnly: true });
+
+        const createdJob = await queue.createJob({ type: "SomeType" });
+
+        expect(await createdJob.isExist()).toBe(true);
+
+        await createdJob.remove();
+
+        expect(await createdJob.isExist()).toBe(false);
+    });
 });
