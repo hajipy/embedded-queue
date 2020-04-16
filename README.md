@@ -77,8 +77,8 @@ Finally, `queue.process` method signature is `quque.process(type, processor, con
 | `Event.Remove`   | Job is removed from queue                        | `(job) => void`           |
 | `Event.Error`    | Error has occurred (on outside of job processor) | `(error, job?) => void`   |
 | `Event.Progress` | Job progress update                              | `(job, progress) => void` |
-| `Event.Log`      | Job log add                                      | `(job) => void`           |
-| `Event.Priority` | Job priority change                              | `(job) => void`           |
+| `Event.Log`      | Job log add                                      | `(job, message) => void`  |
+| `Event.Priority` | Job priority change                              | `(job, priority) => void` |
 
 `Event.Complete` event handler is most commonly used, it can receive job result from job processor.  
 

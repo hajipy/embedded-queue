@@ -120,7 +120,7 @@ export class Job {
 
         await this.update();
 
-        this.queue.emit(Event.Log, this);
+        this.queue.emit(Event.Log, this, message);
     }
 
     public async save(): Promise<Job> {
@@ -150,7 +150,7 @@ export class Job {
 
         await this.update();
 
-        this.queue.emit(Event.Priority, this);
+        this.queue.emit(Event.Priority, this, value);
     }
 
     public async isExist(): Promise<boolean> {
