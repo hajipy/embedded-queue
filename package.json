@@ -18,16 +18,22 @@
     "uuid": "3.3.x"
   },
   "devDependencies": {
+    "@types/jest": "25.x",
     "@types/nedb": "1.8.9",
     "@types/node": "*",
     "@types/uuid": "3.4.6",
     "@typescript-eslint/eslint-plugin": "2.x",
     "@typescript-eslint/parser": "2.x",
     "eslint": "6.x",
+    "eslint-plugin-jest": "23.x",
+    "jest": "25.x",
+    "jest-mock-extended": "1.x",
+    "ts-jest": "25.x",
     "typescript": "3.7.x"
   },
   "scripts": {
     "prepare": "tsc",
+    "test": "jest",
     "lint": "eslint . --ext .ts"
   },
   "repository": {

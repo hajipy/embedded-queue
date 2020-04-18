@@ -63,7 +63,9 @@ export class Worker {
             // タイムアウトまでに処理中のジョブが完了しなければジョブを失敗にする
             this.shutdownInfo = {
                 timer: setTimeout(async () => {
+                    // istanbul ignore if
                     if (this._currentJob === null) {
+                        console.warn(`this._currentJob is null`);
                         return;
                     }
 
@@ -111,6 +113,7 @@ export class Worker {
     }
 
     protected async process(processor: Processor): Promise<void> {
+        // istanbul ignore if
         if (this._currentJob === null) {
             console.warn(`this._currentJob is null`);
             return;

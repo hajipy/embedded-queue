@@ -105,7 +105,7 @@ export class Job {
     }
 
     public async setProgress(completed: number, total: number): Promise<void> {
-        this._progress = Math.min(100, completed * 100 / total);
+        this._progress = completed * 100 / total;
         this._updatedAt = new Date();
 
         await this.update();
