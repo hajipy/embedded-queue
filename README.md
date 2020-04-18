@@ -1,4 +1,6 @@
 # embedded-queue
+![Test](https://github.com/hajipy/embedded-queue/workflows/Test/badge.svg)
+
 embedded-queue is job/message queue for Node.js and Electron. It is not required other process for persistence data, like Redis, MySQL, and so on. It persistence data by using [nedb](https://github.com/louischatriot/nedb) embedded database.
 
 ## Installation
