@@ -2,7 +2,6 @@ import uuid from "uuid/v4";
 
 import { Job, Priority, Queue, State } from "../src";
 import { JobRepository, NeDbJob } from "../src/jobRepository";
-import exp = require("constants");
 
 jest.mock("uuid/v4");
 
