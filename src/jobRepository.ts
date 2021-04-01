@@ -37,7 +37,7 @@ export class JobRepository {
 
     public init(): Promise<void> {
         return new Promise<void>((resolve, reject) => {
-            this.db.loadDatabase((error: Error) => {
+            this.db.loadDatabase((error) => {
                 if (error !== null) {
                     reject(error);
                     return;
