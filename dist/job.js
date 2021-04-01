@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.Job = void 0;
 const event_1 = require("./event");
 const priority_1 = require("./priority");
 const state_1 = require("./state");
