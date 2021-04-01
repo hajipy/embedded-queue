@@ -1,9 +1,9 @@
-import uuid from "uuid/v4";
+import { v4 as uuid } from "uuid";
 
 import { Job, Priority, Queue, State } from "../src";
 import { JobRepository, NeDbJob } from "../src/jobRepository";
 
-jest.mock("uuid/v4");
+jest.mock("uuid");
 
 test("process & shutdown", async () => {
     const queue = await Queue.createQueue({

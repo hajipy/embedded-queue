@@ -1,11 +1,8 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Queue = void 0;
 const events_1 = require("events");
-const v4_1 = __importDefault(require("uuid/v4"));
+const uuid_1 = require("uuid");
 const event_1 = require("./event");
 const job_1 = require("./job");
 const jobRepository_1 = require("./jobRepository");
@@ -44,7 +41,7 @@ class Queue extends events_1.EventEmitter {
         const now = new Date();
         const job = new job_1.Job(Object.assign({}, data, {
             queue: this,
-            id: v4_1.default(),
+            id: uuid_1.v4(),
             createdAt: now,
             updatedAt: now,
             logs: [],
