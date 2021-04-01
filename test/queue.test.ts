@@ -142,25 +142,24 @@ describe("findJob", () => {
         const job = await queue.findJob(id);
 
         expect(job).not.toBeNull();
-        if (job !== null) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            expect((job as any).queue).toBe(queue);
-            expect(job.id).toBe(nedbJob._id);
-            expect(job.type).toBe(nedbJob.type);
-            expect(job.priority).toBe(nedbJob.priority);
-            expect(job.data).toEqual(nedbJob.data);
-            expect(job.createdAt).toEqual(nedbJob.createdAt);
-            expect(job.updatedAt).toEqual(nedbJob.updatedAt);
-            expect(job.startedAt).toEqual(nedbJob.startedAt);
-            expect(job.completedAt).toEqual(nedbJob.completedAt);
-            expect(job.failedAt).toEqual(nedbJob.failedAt);
-            expect(job.state).toBe(nedbJob.state);
-            expect(job.duration).toBe(nedbJob.duration);
-            expect(job.progress).toBe(nedbJob.progress);
-            expect(job.logs).toEqual(nedbJob.logs);
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            expect((job as any)._saved).toBe(true);
-        }
+        /* eslint-disable @typescript-eslint/no-non-null-assertion, @typescript-eslint/no-explicit-any */
+        expect((job as any).queue).toBe(queue);
+        expect(job!.id).toBe(nedbJob._id);
+        expect(job!.type).toBe(nedbJob.type);
+        expect(job!.priority).toBe(nedbJob.priority);
+        expect(job!.data).toEqual(nedbJob.data);
+        expect(job!.createdAt).toEqual(nedbJob.createdAt);
+        expect(job!.updatedAt).toEqual(nedbJob.updatedAt);
+        expect(job!.startedAt).toEqual(nedbJob.startedAt);
+        expect(job!.completedAt).toEqual(nedbJob.completedAt);
+        expect(job!.failedAt).toEqual(nedbJob.failedAt);
+        expect(job!.state).toBe(nedbJob.state);
+        expect(job!.duration).toBe(nedbJob.duration);
+        expect(job!.progress).toBe(nedbJob.progress);
+        expect(job!.logs).toEqual(nedbJob.logs);
+        expect((job as any)._saved).toBe(true);
+        /* eslint-enable @typescript-eslint/no-non-null-assertion, @typescript-eslint/no-explicit-any */
+
         expect(mockedRepositoryFindJob).toHaveBeenCalledTimes(1);
         expect(mockedRepositoryFindJob.mock.calls[0][0]).toBe(id);
     });

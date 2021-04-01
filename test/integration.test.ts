@@ -48,21 +48,11 @@ test("Basic Usage", async () => {
     expect(completedJob.id).toBe(createdJob.id);
     const currentTimestamp = new Date();
     expect(completedJob.startedAt).not.toBeUndefined();
-    if (completedJob.startedAt !== undefined) {
-        expect((currentTimestamp.getTime() - completedJob.startedAt.getTime())).toBeLessThan(1000);
-    }
+    expect((currentTimestamp.getTime() - completedJob.startedAt.getTime())).toBeLessThan(1000);
     expect(completedJob.completedAt).not.toBeUndefined();
-    if (completedJob.completedAt !== undefined) {
-        expect((currentTimestamp.getTime() - completedJob.completedAt.getTime())).toBeLessThan(1000);
-    }
+    expect((currentTimestamp.getTime() - completedJob.completedAt.getTime())).toBeLessThan(1000);
     expect(completedJob.duration).not.toBeUndefined();
-    if (
-        completedJob.duration !== undefined &&
-        completedJob.startedAt !== undefined &&
-        completedJob.completedAt !== undefined
-    ) {
-        expect(completedJob.duration).toBe(completedJob.completedAt.getTime() - completedJob.startedAt.getTime());
-    }
+    expect(completedJob.duration).toBe(completedJob.completedAt.getTime() - completedJob.startedAt.getTime());
     expect(completedJob.failedAt).toBeUndefined();
     expect(completedJob.state).toBe(State.COMPLETE);
 
@@ -300,9 +290,8 @@ describe("Queue API", () => {
         for (const createdJob of createdJobs) {
             const foundJob = await queue.findJob(createdJob.id);
             expect(foundJob).not.toBeNull();
-            if (foundJob !== null) {
-                expect(foundJob.id).toBe(createdJob.id);
-            }
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            expect(foundJob!.id).toBe(createdJob.id);
         }
 
         const notFoundJob = await queue.findJob("invalid-id");
