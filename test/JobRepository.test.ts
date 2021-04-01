@@ -278,9 +278,8 @@ describe("findJob", () => {
     test("found", async () => {
         const job = await repository.findJob("1");
         expect(job).not.toBeNull();
-        if (job !== null) {
-            expect(job._id).toBe("1");
-        }
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        expect(job!._id).toBe("1");
     });
 
     test("not found", async () => {
@@ -533,19 +532,19 @@ test("addJob", async () => {
 
     const jobDocAfter = await dbFind(db, "1");
     expect(jobDocAfter).not.toBeNull();
-    if (jobDocAfter !== null) {
-        expect(jobDocAfter._id).toBe(job.id);
-        expect(jobDocAfter.type).toBe(job.type);
-        expect(jobDocAfter.priority).toBe(job.priority);
-        expect(jobDocAfter.data).toEqual(job.data);
-        expect(jobDocAfter.createdAt).toEqual(job.createdAt);
-        expect(jobDocAfter.updatedAt).toEqual(job.updatedAt);
-        expect(jobDocAfter.startedAt).toBeUndefined();
-        expect(jobDocAfter.completedAt).toBeUndefined();
-        expect(jobDocAfter.failedAt).toBeUndefined();
-        expect(jobDocAfter.state).toBe(job.state);
-        expect(jobDocAfter.logs).toEqual(job.logs);
-    }
+    /* eslint-disable @typescript-eslint/no-non-null-assertion */
+    expect(jobDocAfter!._id).toBe(job.id);
+    expect(jobDocAfter!.type).toBe(job.type);
+    expect(jobDocAfter!.priority).toBe(job.priority);
+    expect(jobDocAfter!.data).toEqual(job.data);
+    expect(jobDocAfter!.createdAt).toEqual(job.createdAt);
+    expect(jobDocAfter!.updatedAt).toEqual(job.updatedAt);
+    expect(jobDocAfter!.startedAt).toBeUndefined();
+    expect(jobDocAfter!.completedAt).toBeUndefined();
+    expect(jobDocAfter!.failedAt).toBeUndefined();
+    expect(jobDocAfter!.state).toBe(job.state);
+    expect(jobDocAfter!.logs).toEqual(job.logs);
+    /* eslint-enable @typescript-eslint/no-non-null-assertion */
 });
 
 describe("updateJob", () => {
@@ -608,21 +607,21 @@ describe("updateJob", () => {
 
         const updatedDoc = await dbFind(db, "1");
         expect(updatedDoc).not.toBeNull();
-        if (updatedDoc !== null) {
-            expect(updatedDoc._id).toBe("1");
-            expect(updatedDoc.type).toBe(job.type);
-            expect(updatedDoc.priority).toBe(job.priority);
-            expect(updatedDoc.data).toEqual(job.data);
-            expect(updatedDoc.createdAt).toEqual(job.createdAt);
-            expect(updatedDoc.updatedAt).toEqual(job.updatedAt);
-            expect(updatedDoc.startedAt).toEqual(job.startedAt);
-            expect(updatedDoc.completedAt).toEqual(job.completedAt);
-            expect(updatedDoc.failedAt).toEqual(job.failedAt);
-            expect(updatedDoc.state).toBe(job.state);
-            expect(updatedDoc.duration).toBe(job.duration);
-            expect(updatedDoc.progress).toBe(job.progress);
-            expect(updatedDoc.logs).toEqual(job.logs);
-        }
+        /* eslint-disable @typescript-eslint/no-non-null-assertion */
+        expect(updatedDoc!._id).toBe("1");
+        expect(updatedDoc!.type).toBe(job.type);
+        expect(updatedDoc!.priority).toBe(job.priority);
+        expect(updatedDoc!.data).toEqual(job.data);
+        expect(updatedDoc!.createdAt).toEqual(job.createdAt);
+        expect(updatedDoc!.updatedAt).toEqual(job.updatedAt);
+        expect(updatedDoc!.startedAt).toEqual(job.startedAt);
+        expect(updatedDoc!.completedAt).toEqual(job.completedAt);
+        expect(updatedDoc!.failedAt).toEqual(job.failedAt);
+        expect(updatedDoc!.state).toBe(job.state);
+        expect(updatedDoc!.duration).toBe(job.duration);
+        expect(updatedDoc!.progress).toBe(job.progress);
+        expect(updatedDoc!.logs).toEqual(job.logs);
+        /* eslint-enable @typescript-eslint/no-non-null-assertion */
     });
 
     test("not found", async () => {

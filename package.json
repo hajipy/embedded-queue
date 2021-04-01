@@ -25,7 +25,7 @@
     "@typescript-eslint/eslint-plugin": "4.x",
     "@typescript-eslint/parser": "4.x",
     "eslint": "7.x",
-    "eslint-plugin-jest": "23.x",
+    "eslint-plugin-jest": "24.x",
     "jest": "26.x",
     "jest-mock-extended": "1.x",
     "ts-jest": "26.x",
