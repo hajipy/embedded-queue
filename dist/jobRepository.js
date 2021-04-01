@@ -3,6 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.JobRepository = void 0;
 const nedb_1 = __importDefault(require("nedb"));
 const state_1 = require("./state");
 class JobRepository {

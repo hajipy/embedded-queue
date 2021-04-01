@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.Event = void 0;
 var Event;
 (function (Event) {
     Event["Enqueue"] = "enqueue";

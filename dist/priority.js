@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.toString = exports.Priority = void 0;
 var Priority;
 (function (Priority) {
     Priority[Priority["LOW"] = 1] = "LOW";
