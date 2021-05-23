@@ -43,5 +43,8 @@
   "bugs": {
     "url": "https://github.com/hajipy/embedded-queue/issues"
   },
-  "homepage": "https://github.com/hajipy/embedded-queue#readme"
+  "homepage": "https://github.com/hajipy/embedded-queue#readme",
+  "resolutions": {
+    "underscore": "^1.12.1"
+  }
 }
