@@ -14,6 +14,7 @@ class Queue extends events_1.EventEmitter {
         super();
         this.repository = new jobRepository_1.JobRepository(dbOptions);
         this._workers = [];
+        this.waitingWorker = {};
     }
     static async createQueue(dbOptions) {
         const queue = new Queue(dbOptions);
@@ -33,7 +34,6 @@ class Queue extends events_1.EventEmitter {
         console.warn(`Invalid Priority: ${priority}`);
         return priority_1.Priority.NORMAL;
     }
-    // tslint:disable:variable-name
     get workers() {
         return [...this._workers];
     }
@@ -205,30 +205,45 @@ class Queue extends events_1.EventEmitter {
     }
     /** @package */
     async findInactiveJobByType(type) {
-        try {
-            return this.repository.findInactiveJobByType(type).then((doc) => {
-                return new job_1.Job({
-                    queue: this,
-                    id: doc._id,
-                    type: doc.type,
-                    priority: Queue.sanitizePriority(doc.priority),
-                    data: doc.data,
-                    createdAt: doc.createdAt,
-                    updatedAt: doc.updatedAt,
-                    startedAt: doc.startedAt,
-                    completedAt: doc.completedAt,
-                    failedAt: doc.failedAt,
-                    state: doc.state,
-                    logs: doc.logs,
-                    duration: doc.duration,
-                    progress: doc.progress,
-                    saved: true,
-                });
+        if (this.waitingWorker[type] !== undefined && this.waitingWorker[type].length > 0) {
+            return new Promise((resolve, reject) => {
+                this.waitingWorker[type].push({ resolve, reject });
             });
+        }
+        let doc;
+        try {
+            doc = await this.repository.findInactiveJobByType(type);
         }
         catch (error) {
             this.emit(event_1.Event.Error, error);
             throw error;
+        }
+        if (doc === null) {
+            return new Promise((resolve, reject) => {
+                if (this.waitingWorker[type] === undefined) {
+                    this.waitingWorker[type] = [];
+                }
+                this.waitingWorker[type].push({ resolve, reject });
+            });
+        }
+        else {
+            return new job_1.Job({
+                queue: this,
+                id: doc._id,
+                type: doc.type,
+                priority: Queue.sanitizePriority(doc.priority),
+                data: doc.data,
+                createdAt: doc.createdAt,
+                updatedAt: doc.updatedAt,
+                startedAt: doc.startedAt,
+                completedAt: doc.completedAt,
+                failedAt: doc.failedAt,
+                state: doc.state,
+                logs: doc.logs,
+                duration: doc.duration,
+                progress: doc.progress,
+                saved: true,
+            });
         }
     }
     /** @package */
@@ -238,7 +253,31 @@ class Queue extends events_1.EventEmitter {
     /** @package */
     async addJob(job) {
         try {
-            return await this.repository.addJob(job);
+            const doc = await this.repository.addJob(job);
+            const type = job.type;
+            if (this.waitingWorker[type] !== undefined) {
+                const waitingHead = this.waitingWorker[type].shift();
+                if (waitingHead !== undefined) {
+                    const job = new job_1.Job({
+                        queue: this,
+                        id: doc._id,
+                        type: doc.type,
+                        priority: Queue.sanitizePriority(doc.priority),
+                        data: doc.data,
+                        createdAt: doc.createdAt,
+                        updatedAt: doc.updatedAt,
+                        startedAt: doc.startedAt,
+                        completedAt: doc.completedAt,
+                        failedAt: doc.failedAt,
+                        state: doc.state,
+                        logs: doc.logs,
+                        duration: doc.duration,
+                        progress: doc.progress,
+                        saved: true,
+                    });
+                    process.nextTick(() => waitingHead.resolve(job));
+                }
+            }
         }
         catch (error) {
             this.emit(event_1.Event.Error, error, job);

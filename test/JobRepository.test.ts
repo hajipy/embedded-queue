@@ -4,12 +4,6 @@ import DataStore from "nedb";
 import { Job, Priority, Queue, State } from "../src";
 import { JobRepository, NeDbJob } from "../src/jobRepository";
 
-// Note: Same as src/jobRepository.ts
-interface WaitingWorkerRequest {
-    resolve: (value: NeDbJob) => void;
-    reject: (error: Error) => void;
-}
-
 function dbFind(db: DataStore, _id: string): Promise<NeDbJob | null> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return new Promise<NeDbJob | null>((resolve, reject) => {
@@ -289,7 +283,7 @@ describe("findJob", () => {
 });
 
 describe("findInactiveJobByType", () => {
-    test("immediately found", async () => {
+    test("found", async () => {
         const repository = new JobRepository({
             inMemoryOnly: true,
         });
@@ -310,93 +304,20 @@ describe("findInactiveJobByType", () => {
             }
         );
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const waitingWorker: { [type: string]: WaitingWorkerRequest[] } = (repository as any).waitingWorker;
-
-        expect(waitingWorker["type"]).toBeUndefined();
         const job = await repository.findInactiveJobByType("type");
-        expect(job._id).toBe("1");
-        expect(waitingWorker["type"]).toBeUndefined();
+        expect(job).not.toBeNull();
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        expect(job!._id).toBe("1");
     });
 
-    test("queue waiting", async () => {
+    test("not found", async () => {
         const repository = new JobRepository({
             inMemoryOnly: true,
         });
         await repository.init();
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const waitingWorker: { [type: string]: WaitingWorkerRequest[] } = (repository as any).waitingWorker;
-        expect(waitingWorker["type1"]).toBeUndefined();
-        expect(waitingWorker["type2"]).toBeUndefined();
-
-        const findJobPromise1 = repository.findInactiveJobByType("type1");
-        await new Promise<void>((resolve) => setTimeout(resolve, 100));
-        expect(waitingWorker["type1"]).not.toBeUndefined();
-        expect(waitingWorker["type1"]).toHaveLength(1);
-        expect(waitingWorker["type2"]).toBeUndefined();
-
-        const findJobPromise2 = repository.findInactiveJobByType("type1");
-        await new Promise<void>((resolve) => setTimeout(resolve, 100));
-        expect(waitingWorker["type1"]).toHaveLength(2);
-        expect(waitingWorker["type2"]).toBeUndefined();
-
-        const findJobPromise3 = repository.findInactiveJobByType("type2");
-        await new Promise<void>((resolve) => setTimeout(resolve, 100));
-        expect(waitingWorker["type1"]).toHaveLength(2);
-        expect(waitingWorker["type2"]).not.toBeUndefined();
-        expect(waitingWorker["type2"]).toHaveLength(1);
-
-        await repository.addJob(
-            new Job({
-                queue: mock<Queue>(),
-                id: "1",
-                type: "type1",
-                createdAt: new Date(),
-                updatedAt: new Date(),
-                state: State.INACTIVE,
-                logs: [],
-                saved: false,
-            })
-        );
-        const job1 = await findJobPromise1;
-        expect(job1._id).toBe("1");
-        expect(waitingWorker["type1"]).toHaveLength(1);
-        expect(waitingWorker["type2"]).toHaveLength(1);
-
-        await repository.addJob(
-            new Job({
-                queue: mock<Queue>(),
-                id: "2",
-                type: "type1",
-                createdAt: new Date(),
-                updatedAt: new Date(),
-                state: State.INACTIVE,
-                logs: [],
-                saved: false,
-            })
-        );
-        const job2 = await findJobPromise2;
-        expect(job2._id).toBe("2");
-        expect(waitingWorker["type1"]).toHaveLength(0);
-        expect(waitingWorker["type2"]).toHaveLength(1);
-
-        await repository.addJob(
-            new Job({
-                queue: mock<Queue>(),
-                id: "3",
-                type: "type2",
-                createdAt: new Date(),
-                updatedAt: new Date(),
-                state: State.INACTIVE,
-                logs: [],
-                saved: false,
-            })
-        );
-        const job3 = await findJobPromise3;
-        expect(job3._id).toBe("3");
-        expect(waitingWorker["type1"]).toHaveLength(0);
-        expect(waitingWorker["type2"]).toHaveLength(0);
+        const job = await repository.findInactiveJobByType("type");
+        expect(job).toBeNull();
     });
 
     test("sort", async () => {
@@ -446,9 +367,12 @@ describe("findInactiveJobByType", () => {
         for (const priority of sortedPriorities) {
             for (const createdAt of sortedCreatedAt) {
                 const job = await repository.findInactiveJobByType("type");
-                expect(job.priority).toBe(priority);
-                expect(job.createdAt).toEqual(createdAt);
-                await dbRemove(db, job._id);
+                expect(job).not.toBeNull();
+                /* eslint-disable @typescript-eslint/no-non-null-assertion */
+                expect(job!.priority).toBe(priority);
+                expect(job!.createdAt).toEqual(createdAt);
+                await dbRemove(db, job!._id);
+                /* eslint-enable @typescript-eslint/no-non-null-assertion */
             }
         }
     });

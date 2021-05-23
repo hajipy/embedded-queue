@@ -11,11 +11,18 @@ export interface CreateJobData {
     data?: unknown;
 }
 export declare type Processor = (job: Job) => Promise<unknown>;
+interface WaitingWorkerRequest {
+    resolve: (value: Job) => void;
+    reject: (error: Error) => void;
+}
 export declare class Queue extends EventEmitter {
     static createQueue(dbOptions?: DbOptions): Promise<Queue>;
     protected static sanitizePriority(priority: number): Priority;
     protected readonly repository: JobRepository;
     protected _workers: Worker[];
+    protected waitingWorker: {
+        [type: string]: WaitingWorkerRequest[];
+    };
     get workers(): Worker[];
     protected constructor(dbOptions?: DbOptions);
     createJob(data: CreateJobData): Promise<Job>;
@@ -37,3 +44,4 @@ export declare class Queue extends EventEmitter {
     removeJob(job: Job): Promise<void>;
     protected cleanupAfterUnexpectedlyTermination(): Promise<void>;
 }
+export {};

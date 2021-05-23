@@ -17,6 +17,11 @@ export interface CreateJobData {
 
 export type Processor = (job: Job) => Promise<unknown>;
 
+interface WaitingWorkerRequest {
+    resolve: (value: Job) => void;
+    reject: (error: Error) => void;
+}
+
 export class Queue extends EventEmitter {
     public static async createQueue(dbOptions?: DbOptions): Promise<Queue> {
         const queue = new Queue(dbOptions);
@@ -48,6 +53,8 @@ export class Queue extends EventEmitter {
     protected _workers: Worker[];
     // tslint:disable:variable-name
 
+    protected waitingWorker: { [type: string]: WaitingWorkerRequest[] };
+
     public get workers(): Worker[] {
         return [...this._workers];
     }
@@ -57,6 +64,7 @@ export class Queue extends EventEmitter {
 
         this.repository = new JobRepository(dbOptions);
         this._workers = [];
+        this.waitingWorker = {};
     }
 
     public async createJob(data: CreateJobData): Promise<Job> {
@@ -261,30 +269,48 @@ export class Queue extends EventEmitter {
 
     /** @package */
     public async findInactiveJobByType(type: string): Promise<Job> {
-        try {
-            return this.repository.findInactiveJobByType(type).then((doc) => {
-                return new Job({
-                    queue: this,
-                    id: doc._id,
-                    type: doc.type,
-                    priority: Queue.sanitizePriority(doc.priority),
-                    data: doc.data,
-                    createdAt: doc.createdAt,
-                    updatedAt: doc.updatedAt,
-                    startedAt: doc.startedAt,
-                    completedAt: doc.completedAt,
-                    failedAt: doc.failedAt,
-                    state: doc.state,
-                    logs: doc.logs,
-                    duration: doc.duration,
-                    progress: doc.progress,
-                    saved: true,
-                });
+        if (this.waitingWorker[type] !== undefined && this.waitingWorker[type].length > 0) {
+            return new Promise<Job>((resolve, reject) => {
+                this.waitingWorker[type].push({ resolve, reject });
             });
+        }
+
+        let doc: NeDbJob | null;
+        try {
+            doc = await this.repository.findInactiveJobByType(type);
         }
         catch (error) {
             this.emit(Event.Error, error);
             throw error;
+        }
+
+        if (doc === null) {
+            return new Promise<Job>((resolve, reject) => {
+                if (this.waitingWorker[type] === undefined) {
+                    this.waitingWorker[type] = [];
+                }
+
+                this.waitingWorker[type].push({ resolve, reject });
+            });
+        }
+        else {
+            return new Job({
+                queue: this,
+                id: doc._id,
+                type: doc.type,
+                priority: Queue.sanitizePriority(doc.priority),
+                data: doc.data,
+                createdAt: doc.createdAt,
+                updatedAt: doc.updatedAt,
+                startedAt: doc.startedAt,
+                completedAt: doc.completedAt,
+                failedAt: doc.failedAt,
+                state: doc.state,
+                logs: doc.logs,
+                duration: doc.duration,
+                progress: doc.progress,
+                saved: true,
+            });
         }
     }
 
@@ -296,7 +322,33 @@ export class Queue extends EventEmitter {
     /** @package */
     public async addJob(job: Job): Promise<void> {
         try {
-            return await this.repository.addJob(job);
+            const doc = await this.repository.addJob(job);
+
+            const type = job.type;
+            if (this.waitingWorker[type] !== undefined) {
+                const waitingHead = this.waitingWorker[type].shift();
+
+                if (waitingHead !== undefined) {
+                    const job = new Job({
+                        queue: this,
+                        id: doc._id,
+                        type: doc.type,
+                        priority: Queue.sanitizePriority(doc.priority),
+                        data: doc.data,
+                        createdAt: doc.createdAt,
+                        updatedAt: doc.updatedAt,
+                        startedAt: doc.startedAt,
+                        completedAt: doc.completedAt,
+                        failedAt: doc.failedAt,
+                        state: doc.state,
+                        logs: doc.logs,
+                        duration: doc.duration,
+                        progress: doc.progress,
+                        saved: true,
+                    });
+                    process.nextTick(() => waitingHead.resolve(job));
+                }
+            }
         }
         catch (error) {
             this.emit(Event.Error, error, job);

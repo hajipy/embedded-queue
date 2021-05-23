@@ -3,6 +3,12 @@ import { v4 as uuid } from "uuid";
 import { Job, Priority, Queue, State } from "../src";
 import { JobRepository, NeDbJob } from "../src/jobRepository";
 
+// Note: Same as src/queue.ts
+interface WaitingWorkerRequest {
+    resolve: (value: Job) => void;
+    reject: (error: Error) => void;
+}
+
 jest.mock("uuid");
 
 test("process & shutdown", async () => {
@@ -468,4 +474,99 @@ test("removeJobsByCallback", async () => {
     expect((removeCallback.mock.calls[0][0] as Job).id).toBe(nedbJobs[0]._id);
     expect((removeCallback.mock.calls[1][0] as Job).id).toBe(nedbJobs[1]._id);
     expect((removeCallback.mock.calls[2][0] as Job).id).toBe(nedbJobs[2]._id);
+});
+
+describe("findInactiveJobByType", () => {
+    test("immediately found", async () => {
+        const uuidValue = "12345678-90ab-cdef-1234-567890abcdef";
+        // eslint-disable-next-line
+        (uuid as any).mockReturnValue(uuidValue);
+
+        const queue = await Queue.createQueue({
+            inMemoryOnly: true,
+        });
+
+        await queue.createJob({
+            type: "type",
+            priority: Priority.NORMAL,
+            data: {},
+        });
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const waitingWorker: { [type: string]: WaitingWorkerRequest[] } = (queue as any).waitingWorker;
+
+        expect(waitingWorker["type"]).toBeUndefined();
+        const job = await queue.findInactiveJobByType("type");
+        expect(job.id).toBe(uuidValue);
+        expect(waitingWorker["type"]).toBeUndefined();
+    });
+
+    test("queue waiting", async () => {
+        const uuidValues = [
+            "12345678-90ab-cdef-1234-567890abcdef",
+            "23456789-0abc-def1-2345-67890abcdef1",
+            "34567890-abcd-ef12-3456-7890abcdef12",
+        ];
+        // eslint-disable-next-line
+        (uuid as any)
+            .mockReturnValueOnce(uuidValues[0])
+            .mockReturnValueOnce(uuidValues[1])
+            .mockReturnValueOnce(uuidValues[2]);
+
+        const queue = await Queue.createQueue({
+            inMemoryOnly: true,
+        });
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const waitingWorker: { [type: string]: WaitingWorkerRequest[] } = (queue as any).waitingWorker;
+        expect(waitingWorker["type1"]).toBeUndefined();
+        expect(waitingWorker["type2"]).toBeUndefined();
+
+        const findJobPromise1 = queue.findInactiveJobByType("type1");
+        await new Promise<void>((resolve) => setTimeout(resolve, 100));
+        expect(waitingWorker["type1"]).not.toBeUndefined();
+        expect(waitingWorker["type1"]).toHaveLength(1);
+        expect(waitingWorker["type2"]).toBeUndefined();
+
+        const findJobPromise2 = queue.findInactiveJobByType("type1");
+        await new Promise<void>((resolve) => setTimeout(resolve, 100));
+        expect(waitingWorker["type1"]).toHaveLength(2);
+        expect(waitingWorker["type2"]).toBeUndefined();
+
+        const findJobPromise3 = queue.findInactiveJobByType("type2");
+        await new Promise<void>((resolve) => setTimeout(resolve, 100));
+        expect(waitingWorker["type1"]).toHaveLength(2);
+        expect(waitingWorker["type2"]).not.toBeUndefined();
+        expect(waitingWorker["type2"]).toHaveLength(1);
+
+        await queue.createJob({
+            type: "type1",
+            priority: Priority.NORMAL,
+            data: {},
+        });
+        const job1 = await findJobPromise1;
+        expect(job1.id).toBe(uuidValues[0]);
+        expect(waitingWorker["type1"]).toHaveLength(1);
+        expect(waitingWorker["type2"]).toHaveLength(1);
+
+        await queue.createJob({
+            type: "type1",
+            priority: Priority.NORMAL,
+            data: {},
+        });
+        const job2 = await findJobPromise2;
+        expect(job2.id).toBe(uuidValues[1]);
+        expect(waitingWorker["type1"]).toHaveLength(0);
+        expect(waitingWorker["type2"]).toHaveLength(1);
+
+        await queue.createJob({
+            type: "type2",
+            priority: Priority.NORMAL,
+            data: {},
+        });
+        const job3 = await findJobPromise3;
+        expect(job3.id).toBe(uuidValues[2]);
+        expect(waitingWorker["type1"]).toHaveLength(0);
+        expect(waitingWorker["type2"]).toHaveLength(0);
+    });
 });
