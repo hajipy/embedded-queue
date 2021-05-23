@@ -266,6 +266,9 @@ test("Shutdown Queue", async () => {
 
     await queue.createJob({ type: "SomeType" });
 
+    // WorkerがJobを処理し始めるまで待つ
+    await setTimeoutPromise(100);
+
     const before = new Date();
     const timeoutMilliseconds = 100;
     await queue.shutdown(timeoutMilliseconds);
