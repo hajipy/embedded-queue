@@ -128,29 +128,13 @@ export class Queue extends EventEmitter {
 
     public async findJob(id: string): Promise<Job | null> {
         try {
-            const doc = await this.repository.findJob(id);
+            const neDbJob = await this.repository.findJob(id);
 
-            if (doc === null) {
+            if (neDbJob === null) {
                 return null;
             }
 
-            return new Job({
-                queue: this,
-                id: doc._id,
-                type: doc.type,
-                priority: Queue.sanitizePriority(doc.priority),
-                data: doc.data,
-                createdAt: doc.createdAt,
-                updatedAt: doc.updatedAt,
-                startedAt: doc.startedAt,
-                completedAt: doc.completedAt,
-                failedAt: doc.failedAt,
-                state: doc.state,
-                duration: doc.duration,
-                progress: doc.progress,
-                logs: doc.logs,
-                saved: true,
-            });
+            return this.convertNeDbJobToJob(neDbJob);
         }
         catch (error) {
             this.emit(Event.Error, error);
@@ -161,25 +145,7 @@ export class Queue extends EventEmitter {
     public async listJobs(state?: State): Promise<Job[]> {
         try {
             return await this.repository.listJobs(state).then((docs) => {
-                return docs.map((doc) => {
-                    return new Job({
-                        queue: this,
-                        id: doc._id,
-                        type: doc.type,
-                        priority: Queue.sanitizePriority(doc.priority),
-                        data: doc.data,
-                        createdAt: doc.createdAt,
-                        updatedAt: doc.updatedAt,
-                        startedAt: doc.startedAt,
-                        completedAt: doc.completedAt,
-                        failedAt: doc.failedAt,
-                        state: doc.state,
-                        duration: doc.duration,
-                        progress: doc.progress,
-                        logs: doc.logs,
-                        saved: true,
-                    });
-                });
+                return docs.map((neDbJob) => this.convertNeDbJobToJob(neDbJob));
             });
         }
         catch (error) {
@@ -189,36 +155,20 @@ export class Queue extends EventEmitter {
     }
 
     public async removeJobById(id: string): Promise<void> {
-        let doc: NeDbJob | null;
+        let neDbJob: NeDbJob | null;
         try {
-            doc = await this.repository.findJob(id);
+            neDbJob = await this.repository.findJob(id);
         }
         catch (error) {
             this.emit(Event.Error, error);
             throw error;
         }
 
-        if (doc === null) {
+        if (neDbJob === null) {
             throw new Error(`Job(id:${id}) is not found.`);
         }
 
-        const job = new Job({
-            queue: this,
-            id: doc._id,
-            type: doc.type,
-            priority: Queue.sanitizePriority(doc.priority),
-            data: doc.data,
-            createdAt: doc.createdAt,
-            updatedAt: doc.updatedAt,
-            startedAt: doc.startedAt,
-            completedAt: doc.completedAt,
-            failedAt: doc.failedAt,
-            state: doc.state,
-            duration: doc.duration,
-            progress: doc.progress,
-            logs: doc.logs,
-            saved: true,
-        });
+        const job = this.convertNeDbJobToJob(neDbJob);
 
         try {
             return await job.remove();
@@ -235,26 +185,10 @@ export class Queue extends EventEmitter {
         let job: Job | undefined;
 
         try {
-            const docs = await this.repository.listJobs();
+            const neDbJobs = await this.repository.listJobs();
 
-            for (const doc of docs) {
-                job = new Job({
-                    queue: this,
-                    id: doc._id,
-                    type: doc.type,
-                    priority: Queue.sanitizePriority(doc.priority),
-                    data: doc.data,
-                    createdAt: doc.createdAt,
-                    updatedAt: doc.updatedAt,
-                    startedAt: doc.startedAt,
-                    completedAt: doc.completedAt,
-                    failedAt: doc.failedAt,
-                    state: doc.state,
-                    duration: doc.duration,
-                    progress: doc.progress,
-                    logs: doc.logs,
-                    saved: true,
-                });
+            for (const neDbJob of neDbJobs) {
+                job = this.convertNeDbJobToJob(neDbJob);
 
                 if (callback(job)) {
                     removedJobs.push(job);
@@ -284,9 +218,9 @@ export class Queue extends EventEmitter {
         // 同じジョブを多重処理しないように排他制御
         const releaseMutex = await this.requestJobForProcessingMutex.acquire();
         try {
-            const doc = await this.repository.findInactiveJobByType(type);
+            const neDbJob = await this.repository.findInactiveJobByType(type);
 
-            if (doc === null) {
+            if (neDbJob === null) {
                 if (this.waitingRequests[type] === undefined) {
                     this.waitingRequests[type] = [];
                 }
@@ -297,23 +231,7 @@ export class Queue extends EventEmitter {
             }
 
             if (stillRequest()) {
-                const job = new Job({
-                    queue: this,
-                    id: doc._id,
-                    type: doc.type,
-                    priority: Queue.sanitizePriority(doc.priority),
-                    data: doc.data,
-                    createdAt: doc.createdAt,
-                    updatedAt: doc.updatedAt,
-                    startedAt: doc.startedAt,
-                    completedAt: doc.completedAt,
-                    failedAt: doc.failedAt,
-                    state: doc.state,
-                    logs: doc.logs,
-                    duration: doc.duration,
-                    progress: doc.progress,
-                    saved: true,
-                });
+                const job = this.convertNeDbJobToJob(neDbJob);
 
                 await job.setStateToActive();
 
@@ -340,7 +258,7 @@ export class Queue extends EventEmitter {
     /** @package */
     public async addJob(job: Job): Promise<void> {
         try {
-            const doc = await this.repository.addJob(job);
+            const neDbJob = await this.repository.addJob(job);
 
             if (this.waitingRequests[job.type] === undefined) {
                 return;
@@ -363,23 +281,7 @@ export class Queue extends EventEmitter {
                 return;
             }
 
-            const addedJob = new Job({
-                queue: this,
-                id: doc._id,
-                type: doc.type,
-                priority: Queue.sanitizePriority(doc.priority),
-                data: doc.data,
-                createdAt: doc.createdAt,
-                updatedAt: doc.updatedAt,
-                startedAt: doc.startedAt,
-                completedAt: doc.completedAt,
-                failedAt: doc.failedAt,
-                state: doc.state,
-                logs: doc.logs,
-                duration: doc.duration,
-                progress: doc.progress,
-                saved: true,
-            });
+            const addedJob = this.convertNeDbJobToJob(neDbJob);
 
             await addedJob.setStateToActive();
 
@@ -420,5 +322,25 @@ export class Queue extends EventEmitter {
         for (const job of jobsNeedCleanup) {
             await job.setStateToFailure(new Error("unexpectedly termination"));
         }
+    }
+
+    protected convertNeDbJobToJob(neDbJob: NeDbJob): Job {
+        return new Job({
+            queue: this,
+            id: neDbJob._id,
+            type: neDbJob.type,
+            priority: Queue.sanitizePriority(neDbJob.priority),
+            data: neDbJob.data,
+            createdAt: neDbJob.createdAt,
+            updatedAt: neDbJob.updatedAt,
+            startedAt: neDbJob.startedAt,
+            completedAt: neDbJob.completedAt,
+            failedAt: neDbJob.failedAt,
+            state: neDbJob.state,
+            duration: neDbJob.duration,
+            progress: neDbJob.progress,
+            logs: neDbJob.logs,
+            saved: true,
+        })
     }
 }

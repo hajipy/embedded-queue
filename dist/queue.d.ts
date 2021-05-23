@@ -2,7 +2,7 @@
 import { EventEmitter } from "events";
 import { Mutex } from "await-semaphore";
 import { Job } from "./job";
-import { DbOptions, JobRepository } from "./jobRepository";
+import { DbOptions, JobRepository, NeDbJob } from "./jobRepository";
 import { Priority } from "./priority";
 import { State } from "./state";
 import { Worker } from "./worker";
@@ -46,5 +46,6 @@ export declare class Queue extends EventEmitter {
     /** @package */
     removeJob(job: Job): Promise<void>;
     protected cleanupAfterUnexpectedlyTermination(): Promise<void>;
+    protected convertNeDbJobToJob(neDbJob: NeDbJob): Job;
 }
 export {};
