@@ -1,5 +1,6 @@
 import { EventEmitter } from "events";
 
+import { Mutex } from "await-semaphore";
 import { v4 as uuid } from "uuid";
 
 import { Event } from "./event";
@@ -20,6 +21,7 @@ export type Processor = (job: Job) => Promise<unknown>;
 interface WaitingWorkerRequest {
     resolve: (value: Job) => void;
     reject: (error: Error) => void;
+    stillRequest: () => boolean;
 }
 
 export class Queue extends EventEmitter {
@@ -53,7 +55,9 @@ export class Queue extends EventEmitter {
     protected _workers: Worker[];
     // tslint:disable:variable-name
 
-    protected waitingWorker: { [type: string]: WaitingWorkerRequest[] };
+    protected waitingRequests: { [type: string]: WaitingWorkerRequest[] };
+
+    protected requestJobForProcessingMutex: Mutex;
 
     public get workers(): Worker[] {
         return [...this._workers];
@@ -64,7 +68,8 @@ export class Queue extends EventEmitter {
 
         this.repository = new JobRepository(dbOptions);
         this._workers = [];
-        this.waitingWorker = {};
+        this.waitingRequests = {};
+        this.requestJobForProcessingMutex = new Mutex();
     }
 
     public async createJob(data: CreateJobData): Promise<Job> {
@@ -268,33 +273,97 @@ export class Queue extends EventEmitter {
     }
 
     /** @package */
-    public async findInactiveJobByType(type: string): Promise<Job> {
-        if (this.waitingWorker[type] !== undefined && this.waitingWorker[type].length > 0) {
+    public async requestJobForProcessing(type: string, stillRequest: () => boolean): Promise<Job | null> {
+        // すでにジョブの作成を待っているリクエストがあれば、行列の末尾に足す
+        if (this.waitingRequests[type] !== undefined && this.waitingRequests[type].length > 0) {
             return new Promise<Job>((resolve, reject) => {
-                this.waitingWorker[type].push({ resolve, reject });
+                this.waitingRequests[type].push({ resolve, reject, stillRequest });
             });
         }
 
-        let doc: NeDbJob | null;
+        // 同じジョブを多重処理しないように排他制御
+        const releaseMutex = await this.requestJobForProcessingMutex.acquire();
         try {
-            doc = await this.repository.findInactiveJobByType(type);
+            const doc = await this.repository.findInactiveJobByType(type);
+
+            if (doc === null) {
+                if (this.waitingRequests[type] === undefined) {
+                    this.waitingRequests[type] = [];
+                }
+
+                return new Promise<Job>((resolve, reject) => {
+                    this.waitingRequests[type].push({ resolve, reject, stillRequest });
+                });
+            }
+
+            if (stillRequest()) {
+                const job = new Job({
+                    queue: this,
+                    id: doc._id,
+                    type: doc.type,
+                    priority: Queue.sanitizePriority(doc.priority),
+                    data: doc.data,
+                    createdAt: doc.createdAt,
+                    updatedAt: doc.updatedAt,
+                    startedAt: doc.startedAt,
+                    completedAt: doc.completedAt,
+                    failedAt: doc.failedAt,
+                    state: doc.state,
+                    logs: doc.logs,
+                    duration: doc.duration,
+                    progress: doc.progress,
+                    saved: true,
+                });
+
+                await job.setStateToActive();
+
+                return job;
+            }
+            else {
+                return null;
+            }
         }
         catch (error) {
             this.emit(Event.Error, error);
             throw error;
         }
+        finally {
+            releaseMutex();
+        }
+    }
 
-        if (doc === null) {
-            return new Promise<Job>((resolve, reject) => {
-                if (this.waitingWorker[type] === undefined) {
-                    this.waitingWorker[type] = [];
+    /** @package */
+    public async isExistJob(job: Job): Promise<boolean> {
+        return await this.repository.isExistJob(job.id);
+    }
+
+    /** @package */
+    public async addJob(job: Job): Promise<void> {
+        try {
+            const doc = await this.repository.addJob(job);
+
+            if (this.waitingRequests[job.type] === undefined) {
+                return;
+            }
+
+            let processRequest: WaitingWorkerRequest | undefined = undefined;
+            while (processRequest === undefined) {
+                const headRequest = this.waitingRequests[job.type].shift();
+
+                if (headRequest === undefined) {
+                    break;
                 }
 
-                this.waitingWorker[type].push({ resolve, reject });
-            });
-        }
-        else {
-            return new Job({
+                if (headRequest.stillRequest()) {
+                    processRequest = headRequest;
+                }
+            }
+
+            if (processRequest === undefined) {
+                return;
+            }
+
+            const addedJob = new Job({
                 queue: this,
                 id: doc._id,
                 type: doc.type,
@@ -311,44 +380,11 @@ export class Queue extends EventEmitter {
                 progress: doc.progress,
                 saved: true,
             });
-        }
-    }
 
-    /** @package */
-    public async isExistJob(job: Job): Promise<boolean> {
-        return await this.repository.isExistJob(job.id);
-    }
+            await addedJob.setStateToActive();
 
-    /** @package */
-    public async addJob(job: Job): Promise<void> {
-        try {
-            const doc = await this.repository.addJob(job);
-
-            const type = job.type;
-            if (this.waitingWorker[type] !== undefined) {
-                const waitingHead = this.waitingWorker[type].shift();
-
-                if (waitingHead !== undefined) {
-                    const job = new Job({
-                        queue: this,
-                        id: doc._id,
-                        type: doc.type,
-                        priority: Queue.sanitizePriority(doc.priority),
-                        data: doc.data,
-                        createdAt: doc.createdAt,
-                        updatedAt: doc.updatedAt,
-                        startedAt: doc.startedAt,
-                        completedAt: doc.completedAt,
-                        failedAt: doc.failedAt,
-                        state: doc.state,
-                        logs: doc.logs,
-                        duration: doc.duration,
-                        progress: doc.progress,
-                        saved: true,
-                    });
-                    process.nextTick(() => waitingHead.resolve(job));
-                }
-            }
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            process.nextTick(() => processRequest!.resolve(addedJob));
         }
         catch (error) {
             this.emit(Event.Error, error, job);

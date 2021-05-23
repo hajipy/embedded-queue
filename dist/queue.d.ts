@@ -1,5 +1,6 @@
 /// <reference types="node" />
 import { EventEmitter } from "events";
+import { Mutex } from "await-semaphore";
 import { Job } from "./job";
 import { DbOptions, JobRepository } from "./jobRepository";
 import { Priority } from "./priority";
@@ -14,15 +15,17 @@ export declare type Processor = (job: Job) => Promise<unknown>;
 interface WaitingWorkerRequest {
     resolve: (value: Job) => void;
     reject: (error: Error) => void;
+    stillRequest: () => boolean;
 }
 export declare class Queue extends EventEmitter {
     static createQueue(dbOptions?: DbOptions): Promise<Queue>;
     protected static sanitizePriority(priority: number): Priority;
     protected readonly repository: JobRepository;
     protected _workers: Worker[];
-    protected waitingWorker: {
+    protected waitingRequests: {
         [type: string]: WaitingWorkerRequest[];
     };
+    protected requestJobForProcessingMutex: Mutex;
     get workers(): Worker[];
     protected constructor(dbOptions?: DbOptions);
     createJob(data: CreateJobData): Promise<Job>;
@@ -33,7 +36,7 @@ export declare class Queue extends EventEmitter {
     removeJobById(id: string): Promise<void>;
     removeJobsByCallback(callback: (job: Job) => boolean): Promise<Job[]>;
     /** @package */
-    findInactiveJobByType(type: string): Promise<Job>;
+    requestJobForProcessing(type: string, stillRequest: () => boolean): Promise<Job | null>;
     /** @package */
     isExistJob(job: Job): Promise<boolean>;
     /** @package */

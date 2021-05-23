@@ -23,11 +23,10 @@ test("basic", async () => {
     const mockedQueue = mock<Queue>();
 
     const job = createJob(mockedQueue, "1"); 
-    const spiedJobSetStateToActive = jest.spyOn(job, "setStateToActive");
     const spiedJobSetStateToComplete = jest.spyOn(job, "setStateToComplete");
     const spiedJobSetStateToFailure = jest.spyOn(job, "setStateToFailure");
     
-    mockedQueue.findInactiveJobByType
+    mockedQueue.requestJobForProcessing
         .mockResolvedValueOnce(job)
         .mockResolvedValueOnce(createJob(mockedQueue, "2"));
 
@@ -55,7 +54,6 @@ test("basic", async () => {
 
     expect(worker.isRunning).toBe(false);
     expect(processor).toHaveBeenCalledTimes(2);
-    expect(spiedJobSetStateToActive).toHaveBeenCalledTimes(1);
     expect(spiedJobSetStateToComplete).toHaveBeenCalledTimes(1);
     expect(spiedJobSetStateToComplete.mock.calls[0][0]).toBe(123);
     expect(spiedJobSetStateToFailure).not.toHaveBeenCalled();
@@ -64,6 +62,9 @@ test("basic", async () => {
 describe("shutdown", () => {
     test("idle", async () => {
         const mockedQueue = mock<Queue>();
+
+        // eslint-disable-next-line @typescript-eslint/no-empty-function
+        mockedQueue.requestJobForProcessing.mockReturnValue(new Promise(() => {}));
 
         const worker = new Worker({
             type: "type",
@@ -101,11 +102,10 @@ describe("shutdown", () => {
         const mockedQueue = mock<Queue>();
 
         const job = createJob(mockedQueue, "1");
-        const spiedJobSetStateToActive = jest.spyOn(job, "setStateToActive");
         const spiedJobSetStateToComplete = jest.spyOn(job, "setStateToComplete");
         const spiedJobSetStateToFailure = jest.spyOn(job, "setStateToFailure");
 
-        mockedQueue.findInactiveJobByType.mockResolvedValueOnce(job);
+        mockedQueue.requestJobForProcessing.mockResolvedValueOnce(job);
 
         const worker = new Worker({
             type: "type",
@@ -126,7 +126,6 @@ describe("shutdown", () => {
         expect(worker.isRunning).toBe(false);
         expect(worker.currentJob).toBeNull();
         expect(processor).toHaveBeenCalledTimes(1);
-        expect(spiedJobSetStateToActive).toHaveBeenCalledTimes(1);
         expect(spiedJobSetStateToComplete).toHaveBeenCalledTimes(1);
         expect(spiedJobSetStateToFailure).not.toHaveBeenCalled();
     });
@@ -135,11 +134,10 @@ describe("shutdown", () => {
         const mockedQueue = mock<Queue>();
 
         const job = createJob(mockedQueue, "1");
-        const spiedJobSetStateToActive = jest.spyOn(job, "setStateToActive");
         const spiedJobSetStateToComplete = jest.spyOn(job, "setStateToComplete");
         const spiedJobSetStateToFailure = jest.spyOn(job, "setStateToFailure");
 
-        mockedQueue.findInactiveJobByType.mockResolvedValueOnce(job);
+        mockedQueue.requestJobForProcessing.mockResolvedValueOnce(job);
 
         const worker = new Worker({
             type: "type",
@@ -160,7 +158,6 @@ describe("shutdown", () => {
         expect(worker.isRunning).toBe(false);
         expect(worker.currentJob).toBeNull();
         expect(processor).toHaveBeenCalledTimes(1);
-        expect(spiedJobSetStateToActive).toHaveBeenCalledTimes(1);
         expect(spiedJobSetStateToComplete).not.toHaveBeenCalled();
         expect(spiedJobSetStateToFailure).toHaveBeenCalledTimes(1);
         expect(spiedJobSetStateToFailure.mock.calls[0][0].message).toBe("shutdown timeout")
@@ -171,11 +168,10 @@ test("processor failed", async () => {
     const mockedQueue = mock<Queue>();
 
     const job = createJob(mockedQueue, "1");
-    const spiedJobSetStateToActive = jest.spyOn(job, "setStateToActive");
     const spiedJobSetStateToComplete = jest.spyOn(job, "setStateToComplete");
     const spiedJobSetStateToFailure = jest.spyOn(job, "setStateToFailure");
     
-    mockedQueue.findInactiveJobByType
+    mockedQueue.requestJobForProcessing
         .mockResolvedValueOnce(job)
         .mockResolvedValueOnce(createJob(mockedQueue, "2"));
 
@@ -197,7 +193,6 @@ test("processor failed", async () => {
     worker.start(processor);
     await setTimeoutPromise(100);
 
-    expect(spiedJobSetStateToActive).toHaveBeenCalledTimes(1);
     expect(spiedJobSetStateToComplete).not.toHaveBeenCalled();
     expect(spiedJobSetStateToFailure).toHaveBeenCalledTimes(1);
     expect(spiedJobSetStateToFailure.mock.calls[0][0].message).toBe("Some Error");
@@ -207,11 +202,10 @@ test("processing job is deleted", async () => {
     const mockedQueue = mock<Queue>();
 
     const job1 = createJob(mockedQueue, "1");
-    const spiedJobSetStateToActive = jest.spyOn(job1, "setStateToActive");
     const spiedJobSetStateToComplete = jest.spyOn(job1, "setStateToComplete");
     const spiedJobSetStateToFailure = jest.spyOn(job1, "setStateToFailure");
 
-    mockedQueue.findInactiveJobByType
+    mockedQueue.requestJobForProcessing
         .mockResolvedValueOnce(job1)
         .mockResolvedValueOnce(createJob(mockedQueue, "2"));
 
@@ -234,7 +228,6 @@ test("processing job is deleted", async () => {
     worker.start(processor);
     await setTimeoutPromise(100);
 
-    expect(spiedJobSetStateToActive).toHaveBeenCalledTimes(1);
     expect(spiedJobSetStateToComplete).not.toHaveBeenCalled();
     expect(spiedJobSetStateToFailure).not.toHaveBeenCalled();
 });

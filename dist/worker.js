@@ -69,9 +69,13 @@ class Worker {
             return;
         }
         (async () => {
-            this._currentJob = await this.queue.findInactiveJobByType(this.type);
+            this._currentJob = await this.queue.requestJobForProcessing(this.type, () => this._isRunning);
             // 実行中じゃなければシャットダウンが進行中なので、処理を中断する
             if (this._isRunning === false) {
+                // this._isRunningがfalseの場合、this.queue.requestProcessJobはnullを返すことになっている
+                if (this._currentJob !== null) {
+                    console.warn(`this._currentJob is not null`);
+                }
                 this._currentJob = null;
                 return;
             }
@@ -86,7 +90,6 @@ class Worker {
             console.warn(`this._currentJob is null`);
             return;
         }
-        await this._currentJob.setStateToActive();
         let result;
         try {
             result = await processor(this._currentJob);

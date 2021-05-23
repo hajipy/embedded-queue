@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Queue = void 0;
 const events_1 = require("events");
+const await_semaphore_1 = require("await-semaphore");
 const uuid_1 = require("uuid");
 const event_1 = require("./event");
 const job_1 = require("./job");
@@ -14,7 +15,8 @@ class Queue extends events_1.EventEmitter {
         super();
         this.repository = new jobRepository_1.JobRepository(dbOptions);
         this._workers = [];
-        this.waitingWorker = {};
+        this.waitingRequests = {};
+        this.requestJobForProcessingMutex = new await_semaphore_1.Mutex();
     }
     static async createQueue(dbOptions) {
         const queue = new Queue(dbOptions);
@@ -204,30 +206,83 @@ class Queue extends events_1.EventEmitter {
         return removedJobs;
     }
     /** @package */
-    async findInactiveJobByType(type) {
-        if (this.waitingWorker[type] !== undefined && this.waitingWorker[type].length > 0) {
+    async requestJobForProcessing(type, stillRequest) {
+        // すでにジョブの作成を待っているリクエストがあれば、行列の末尾に足す
+        if (this.waitingRequests[type] !== undefined && this.waitingRequests[type].length > 0) {
             return new Promise((resolve, reject) => {
-                this.waitingWorker[type].push({ resolve, reject });
+                this.waitingRequests[type].push({ resolve, reject, stillRequest });
             });
         }
-        let doc;
+        // 同じジョブを多重処理しないように排他制御
+        const releaseMutex = await this.requestJobForProcessingMutex.acquire();
         try {
-            doc = await this.repository.findInactiveJobByType(type);
+            const doc = await this.repository.findInactiveJobByType(type);
+            if (doc === null) {
+                if (this.waitingRequests[type] === undefined) {
+                    this.waitingRequests[type] = [];
+                }
+                return new Promise((resolve, reject) => {
+                    this.waitingRequests[type].push({ resolve, reject, stillRequest });
+                });
+            }
+            if (stillRequest()) {
+                const job = new job_1.Job({
+                    queue: this,
+                    id: doc._id,
+                    type: doc.type,
+                    priority: Queue.sanitizePriority(doc.priority),
+                    data: doc.data,
+                    createdAt: doc.createdAt,
+                    updatedAt: doc.updatedAt,
+                    startedAt: doc.startedAt,
+                    completedAt: doc.completedAt,
+                    failedAt: doc.failedAt,
+                    state: doc.state,
+                    logs: doc.logs,
+                    duration: doc.duration,
+                    progress: doc.progress,
+                    saved: true,
+                });
+                await job.setStateToActive();
+                return job;
+            }
+            else {
+                return null;
+            }
         }
         catch (error) {
             this.emit(event_1.Event.Error, error);
             throw error;
         }
-        if (doc === null) {
-            return new Promise((resolve, reject) => {
-                if (this.waitingWorker[type] === undefined) {
-                    this.waitingWorker[type] = [];
-                }
-                this.waitingWorker[type].push({ resolve, reject });
-            });
+        finally {
+            releaseMutex();
         }
-        else {
-            return new job_1.Job({
+    }
+    /** @package */
+    async isExistJob(job) {
+        return await this.repository.isExistJob(job.id);
+    }
+    /** @package */
+    async addJob(job) {
+        try {
+            const doc = await this.repository.addJob(job);
+            if (this.waitingRequests[job.type] === undefined) {
+                return;
+            }
+            let processRequest = undefined;
+            while (processRequest === undefined) {
+                const headRequest = this.waitingRequests[job.type].shift();
+                if (headRequest === undefined) {
+                    break;
+                }
+                if (headRequest.stillRequest()) {
+                    processRequest = headRequest;
+                }
+            }
+            if (processRequest === undefined) {
+                return;
+            }
+            const addedJob = new job_1.Job({
                 queue: this,
                 id: doc._id,
                 type: doc.type,
@@ -244,40 +299,9 @@ class Queue extends events_1.EventEmitter {
                 progress: doc.progress,
                 saved: true,
             });
-        }
-    }
-    /** @package */
-    async isExistJob(job) {
-        return await this.repository.isExistJob(job.id);
-    }
-    /** @package */
-    async addJob(job) {
-        try {
-            const doc = await this.repository.addJob(job);
-            const type = job.type;
-            if (this.waitingWorker[type] !== undefined) {
-                const waitingHead = this.waitingWorker[type].shift();
-                if (waitingHead !== undefined) {
-                    const job = new job_1.Job({
-                        queue: this,
-                        id: doc._id,
-                        type: doc.type,
-                        priority: Queue.sanitizePriority(doc.priority),
-                        data: doc.data,
-                        createdAt: doc.createdAt,
-                        updatedAt: doc.updatedAt,
-                        startedAt: doc.startedAt,
-                        completedAt: doc.completedAt,
-                        failedAt: doc.failedAt,
-                        state: doc.state,
-                        logs: doc.logs,
-                        duration: doc.duration,
-                        progress: doc.progress,
-                        saved: true,
-                    });
-                    process.nextTick(() => waitingHead.resolve(job));
-                }
-            }
+            await addedJob.setStateToActive();
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            process.nextTick(() => processRequest.resolve(addedJob));
         }
         catch (error) {
             this.emit(event_1.Event.Error, error, job);
