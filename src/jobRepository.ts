@@ -21,18 +21,11 @@ export interface NeDbJob {
 
 export type DbOptions = DataStoreOptions;
 
-interface WaitingWorkerRequest {
-    resolve: (value: NeDbJob) => void;
-    reject: (error: Error) => void;
-}
-
 export class JobRepository {
     protected readonly db: DataStore;
-    protected waitingWorker: { [type: string]: WaitingWorkerRequest[] };
 
     public constructor(dbOptions: DbOptions = {}) {
         this.db = new DataStore(dbOptions);
-        this.waitingWorker = {};
     }
 
     public init(): Promise<void> {
@@ -78,13 +71,8 @@ export class JobRepository {
         });
     }
 
-    public findInactiveJobByType(type: string): Promise<NeDbJob> {
-        return new Promise<NeDbJob>((resolve, reject) => {
-            if (this.waitingWorker[type] !== undefined && this.waitingWorker[type].length > 0) {
-                this.waitingWorker[type].push({ resolve, reject });
-                return;
-            }
-
+    public findInactiveJobByType(type: string): Promise<NeDbJob | null> {
+        return new Promise<NeDbJob | null>((resolve, reject) => {
             this.db.find({ type, state: State.INACTIVE })
                 .sort({ priority: -1, createdAt: 1 })
                 .limit(1)
@@ -94,17 +82,7 @@ export class JobRepository {
                         return;
                     }
 
-                    // 該当typeのジョブがない場合、新たに作成されるまで待機する
-                    if (docs.length === 0) {
-                        if (this.waitingWorker[type] === undefined) {
-                            this.waitingWorker[type] = [];
-                        }
-
-                        this.waitingWorker[type].push({ resolve, reject });
-                        return;
-                    }
-
-                    resolve(docs[0]);
+                    resolve((docs.length === 0) ? null : docs[0]);
                 });
         });
     }
@@ -122,8 +100,8 @@ export class JobRepository {
         });
     }
 
-    public addJob(job: Job): Promise<void> {
-        return new Promise<void>((resolve, reject) => {
+    public addJob(job: Job): Promise<NeDbJob> {
+        return new Promise<NeDbJob>((resolve, reject) => {
             const insertDoc = {
                 _id: job.id,
                 type: job.type,
@@ -141,16 +119,7 @@ export class JobRepository {
                     return;
                 }
 
-                const type = job.type;
-                if (this.waitingWorker[type] !== undefined) {
-                    const waitingHead = this.waitingWorker[type].shift();
-
-                    if (waitingHead !== undefined) {
-                        process.nextTick(() => { waitingHead.resolve(doc); });
-                    }
-                }
-
-                resolve();
+                resolve(doc);
             });
         });
     }

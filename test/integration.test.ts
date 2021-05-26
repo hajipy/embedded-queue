@@ -266,6 +266,9 @@ test("Shutdown Queue", async () => {
 
     await queue.createJob({ type: "SomeType" });
 
+    // WorkerがJobを処理し始めるまで待つ
+    await setTimeoutPromise(100);
+
     const before = new Date();
     const timeoutMilliseconds = 100;
     await queue.shutdown(timeoutMilliseconds);
@@ -392,4 +395,39 @@ describe("Job API", () => {
 
         expect(await createdJob.isExist()).toBe(false);
     });
+});
+
+test("Multiple Workers", async () => {
+    const queue = await Queue.createQueue({ inMemoryOnly: true });
+
+    let completedJobCount = 0;
+    queue.on(Event.Complete, () => {
+        completedJobCount++;
+    });
+
+    let createdJobCount = 0;
+    for (let i = 0; i < 10; i++) {
+        await queue.createJob({ type: "SomeType" });
+        createdJobCount++;
+    }
+
+    expect(completedJobCount).toBe(0);
+
+    // eslint-disable-next-line @typescript-eslint/no-empty-function
+    queue.process("SomeType", async () => {}, 5);
+
+    // WorkerがJobを処理し終えるまで待つ
+    await setTimeoutPromise(100);
+
+    expect(completedJobCount).toBe(createdJobCount);
+
+    for (let i = 0; i < 10; i++) {
+        await queue.createJob({ type: "SomeType" });
+        createdJobCount++;
+    }
+
+    // WorkerがJobを処理し終えるまで待つ
+    await setTimeoutPromise(100);
+
+    expect(completedJobCount).toBe(createdJobCount);
 });

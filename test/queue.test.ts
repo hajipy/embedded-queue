@@ -3,6 +3,12 @@ import { v4 as uuid } from "uuid";
 import { Job, Priority, Queue, State } from "../src";
 import { JobRepository, NeDbJob } from "../src/jobRepository";
 
+// Note: Same as src/queue.ts
+interface WaitingWorkerRequest {
+    resolve: (value: Job) => void;
+    reject: (error: Error) => void;
+}
+
 jest.mock("uuid");
 
 test("process & shutdown", async () => {
@@ -468,4 +474,157 @@ test("removeJobsByCallback", async () => {
     expect((removeCallback.mock.calls[0][0] as Job).id).toBe(nedbJobs[0]._id);
     expect((removeCallback.mock.calls[1][0] as Job).id).toBe(nedbJobs[1]._id);
     expect((removeCallback.mock.calls[2][0] as Job).id).toBe(nedbJobs[2]._id);
+});
+
+describe("requestJobForProcessing", () => {
+    test("immediately found", async () => {
+        const uuidValue = "12345678-90ab-cdef-1234-567890abcdef";
+        // eslint-disable-next-line
+        (uuid as any).mockReturnValue(uuidValue);
+
+        const queue = await Queue.createQueue({ inMemoryOnly: true });
+
+        await queue.createJob({
+            type: "type",
+            priority: Priority.NORMAL,
+            data: {},
+        });
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const waitingRequests: { [type: string]: WaitingWorkerRequest[] } = (queue as any).waitingRequests;
+
+        expect(waitingRequests["type"]).toBeUndefined();
+        const job = await queue.requestJobForProcessing("type", () => true);
+        expect(job).not.toBeNull();
+        expect(job?.id).toBe(uuidValue);
+        expect(job?.state).toBe(State.ACTIVE);
+        expect(waitingRequests["type"]).toBeUndefined();
+    });
+
+    test("queue waiting", async () => {
+        const uuidValues = [
+            "12345678-90ab-cdef-1234-567890abcdef",
+            "23456789-0abc-def1-2345-67890abcdef1",
+            "34567890-abcd-ef12-3456-7890abcdef12",
+        ];
+        // eslint-disable-next-line
+        (uuid as any)
+            .mockReturnValueOnce(uuidValues[0])
+            .mockReturnValueOnce(uuidValues[1])
+            .mockReturnValueOnce(uuidValues[2]);
+
+        const queue = await Queue.createQueue({ inMemoryOnly: true });
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const waitingRequests: { [type: string]: WaitingWorkerRequest[] } = (queue as any).waitingRequests;
+        expect(waitingRequests["type1"]).toBeUndefined();
+        expect(waitingRequests["type2"]).toBeUndefined();
+
+        const findJobPromise1 = queue.requestJobForProcessing("type1", () => true);
+        await new Promise<void>((resolve) => setTimeout(resolve, 100));
+        expect(waitingRequests["type1"]).not.toBeUndefined();
+        expect(waitingRequests["type1"]).toHaveLength(1);
+        expect(waitingRequests["type2"]).toBeUndefined();
+
+        const findJobPromise2 = queue.requestJobForProcessing("type1", () => true);
+        await new Promise<void>((resolve) => setTimeout(resolve, 100));
+        expect(waitingRequests["type1"]).toHaveLength(2);
+        expect(waitingRequests["type2"]).toBeUndefined();
+
+        const findJobPromise3 = queue.requestJobForProcessing("type2", () => true);
+        await new Promise<void>((resolve) => setTimeout(resolve, 100));
+        expect(waitingRequests["type1"]).toHaveLength(2);
+        expect(waitingRequests["type2"]).not.toBeUndefined();
+        expect(waitingRequests["type2"]).toHaveLength(1);
+
+        await queue.createJob({
+            type: "type1",
+            priority: Priority.NORMAL,
+            data: {},
+        });
+        const job1 = await findJobPromise1;
+        expect(job1).not.toBeNull();
+        expect(job1?.id).toBe(uuidValues[0]);
+        expect(job1?.state).toBe(State.ACTIVE);
+        expect(waitingRequests["type1"]).toHaveLength(1);
+        expect(waitingRequests["type2"]).toHaveLength(1);
+
+        await queue.createJob({
+            type: "type1",
+            priority: Priority.NORMAL,
+            data: {},
+        });
+        const job2 = await findJobPromise2;
+        expect(job2).not.toBeNull();
+        expect(job2?.id).toBe(uuidValues[1]);
+        expect(job2?.state).toBe(State.ACTIVE);
+        expect(waitingRequests["type1"]).toHaveLength(0);
+        expect(waitingRequests["type2"]).toHaveLength(1);
+
+        await queue.createJob({
+            type: "type2",
+            priority: Priority.NORMAL,
+            data: {},
+        });
+        const job3 = await findJobPromise3;
+        expect(job3).not.toBeNull();
+        expect(job3?.id).toBe(uuidValues[2]);
+        expect(job3?.state).toBe(State.ACTIVE);
+        expect(waitingRequests["type1"]).toHaveLength(0);
+        expect(waitingRequests["type2"]).toHaveLength(0);
+    });
+
+    describe("job is already unnecessary", () => {
+        test("immediately found", async () => {
+            const uuidValue = "12345678-90ab-cdef-1234-567890abcdef";
+            // eslint-disable-next-line
+            (uuid as any).mockReturnValue(uuidValue);
+
+            const queue = await Queue.createQueue({ inMemoryOnly: true });
+
+            await queue.createJob({
+                type: "type",
+                priority: Priority.NORMAL,
+                data: {},
+            });
+
+            const job1 = await queue.requestJobForProcessing("type", () => false);
+            expect(job1).toBeNull();
+
+            const job2 = await queue.requestJobForProcessing("type", () => false);
+            expect(job2).toBeNull();
+
+            const job3 = await queue.requestJobForProcessing("type", () => true);
+            expect(job3).not.toBeNull();
+            expect(job3?.id).toBe(uuidValue);
+        });
+
+        test("queue waiting", async () => {
+            const uuidValue = "12345678-90ab-cdef-1234-567890abcdef";
+            // eslint-disable-next-line
+            (uuid as any).mockReturnValue(uuidValue);
+
+            const queue = await Queue.createQueue({ inMemoryOnly: true });
+
+            const findJobPromise1 = queue.requestJobForProcessing("type", () => false);
+            const findJobPromise2 = queue.requestJobForProcessing("type", () => false);
+            const findJobPromise3 = queue.requestJobForProcessing("type", () => true);
+
+            await queue.createJob({
+                type: "type",
+                priority: Priority.NORMAL,
+                data: {},
+            });
+
+            const job1 = await findJobPromise1;
+            expect(job1).toBeNull();
+
+            const job2 = await findJobPromise2;
+            expect(job2).toBeNull();
+
+            const job3 = await findJobPromise3;
+            expect(job3).not.toBeNull();
+            expect(job3?.id).toBe(uuidValue);
+        });
+    });
 });

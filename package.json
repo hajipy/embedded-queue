@@ -14,6 +14,7 @@
     "email": "hajime@studiohff.net"
   },
   "dependencies": {
+    "await-semaphore": "0.1.x",
     "nedb": "^1.8.0",
     "uuid": "8.x"
   },

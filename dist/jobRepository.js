@@ -9,7 +9,6 @@ const state_1 = require("./state");
 class JobRepository {
     constructor(dbOptions = {}) {
         this.db = new nedb_1.default(dbOptions);
-        this.waitingWorker = {};
     }
     init() {
         return new Promise((resolve, reject) => {
@@ -49,10 +48,6 @@ class JobRepository {
     }
     findInactiveJobByType(type) {
         return new Promise((resolve, reject) => {
-            if (this.waitingWorker[type] !== undefined && this.waitingWorker[type].length > 0) {
-                this.waitingWorker[type].push({ resolve, reject });
-                return;
-            }
             this.db.find({ type, state: state_1.State.INACTIVE })
                 .sort({ priority: -1, createdAt: 1 })
                 .limit(1)
@@ -61,15 +56,7 @@ class JobRepository {
                     reject(error);
                     return;
                 }
-                // 該当typeのジョブがない場合、新たに作成されるまで待機する
-                if (docs.length === 0) {
-                    if (this.waitingWorker[type] === undefined) {
-                        this.waitingWorker[type] = [];
-                    }
-                    this.waitingWorker[type].push({ resolve, reject });
-                    return;
-                }
-                resolve(docs[0]);
+                resolve((docs.length === 0) ? null : docs[0]);
             });
         });
     }
@@ -101,14 +88,7 @@ class JobRepository {
                     reject(error);
                     return;
                 }
-                const type = job.type;
-                if (this.waitingWorker[type] !== undefined) {
-                    const waitingHead = this.waitingWorker[type].shift();
-                    if (waitingHead !== undefined) {
-                        process.nextTick(() => { waitingHead.resolve(doc); });
-                    }
-                }
-                resolve();
+                resolve(doc);
             });
         });
     }

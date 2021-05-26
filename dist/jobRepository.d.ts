@@ -17,23 +17,15 @@ export interface NeDbJob {
     logs: string[];
 }
 export declare type DbOptions = DataStoreOptions;
-interface WaitingWorkerRequest {
-    resolve: (value: NeDbJob) => void;
-    reject: (error: Error) => void;
-}
 export declare class JobRepository {
     protected readonly db: DataStore;
-    protected waitingWorker: {
-        [type: string]: WaitingWorkerRequest[];
-    };
     constructor(dbOptions?: DbOptions);
     init(): Promise<void>;
     listJobs(state?: State): Promise<NeDbJob[]>;
     findJob(id: string): Promise<NeDbJob | null>;
-    findInactiveJobByType(type: string): Promise<NeDbJob>;
+    findInactiveJobByType(type: string): Promise<NeDbJob | null>;
     isExistJob(id: string): Promise<boolean>;
-    addJob(job: Job): Promise<void>;
+    addJob(job: Job): Promise<NeDbJob>;
     updateJob(job: Job): Promise<void>;
     removeJob(id: string): Promise<void>;
 }
-export {};
