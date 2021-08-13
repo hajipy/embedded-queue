@@ -19,7 +19,7 @@
     "uuid": "8.x"
   },
   "devDependencies": {
-    "@types/jest": "26.x",
+    "@types/jest": "27.x",
     "@types/nedb": "1.8.x",
     "@types/node": "*",
     "@types/uuid": "8.x",
