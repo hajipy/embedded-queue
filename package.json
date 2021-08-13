@@ -19,7 +19,7 @@
     "uuid": "8.x"
   },
   "devDependencies": {
-    "@types/jest": "26.x",
+    "@types/jest": "27.x",
     "@types/nedb": "1.8.x",
     "@types/node": "*",
     "@types/uuid": "8.x",
@@ -30,7 +30,7 @@
     "jest": "27.x",
     "jest-mock-extended": "1.x",
     "ts-jest": "27.x",
-    "typescript": "4.2.x"
+    "typescript": "4.3.x"
   },
   "scripts": {
     "prepare": "tsc",
