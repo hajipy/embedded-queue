@@ -25,7 +25,7 @@
     "@types/uuid": "8.x",
     "@typescript-eslint/eslint-plugin": "5.x",
     "@typescript-eslint/parser": "5.x",
-    "eslint": "7.x",
+    "eslint": "8.x",
     "eslint-plugin-jest": "25.x",
     "jest": "27.x",
     "jest-mock-extended": "2.x",
