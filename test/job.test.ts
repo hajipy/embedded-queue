@@ -297,7 +297,7 @@ test("setStateToActive", async () => {
 
     await job.setStateToActive();
 
-    expect(job.startedAt).not.toBeUndefined();
+    expect(job.startedAt).toBeDefined();
     expect(job.updatedAt).not.toBe(updatedAt);
     expect(mockedQueue.updateJob).toHaveBeenCalledTimes(1);
     expect(mockedQueue.updateJob.mock.calls[0][0]).toBe(job);
@@ -337,7 +337,7 @@ test("setStateToComplete", async () => {
 
     await job.setStateToComplete(result);
 
-    expect(job.completedAt).not.toBeUndefined();
+    expect(job.completedAt).toBeDefined();
     expect(job.duration).toBeCloseTo((new Date()).getTime() - startedAt.getTime(), -3); // 1 seconds or less
     expect(job.updatedAt).not.toBe(updatedAt);
     expect(mockedQueue.updateJob).toHaveBeenCalledTimes(1);
@@ -369,7 +369,7 @@ test("setStateToFailure", async () => {
     const error = new Error("my error");
     await job.setStateToFailure(error);
 
-    expect(job.failedAt).not.toBeUndefined();
+    expect(job.failedAt).toBeDefined();
     expect(job.updatedAt).not.toBe(updatedAt);
     expect(mockedQueue.updateJob).toHaveBeenCalledTimes(1);
     expect(mockedQueue.updateJob.mock.calls[0][0]).toBe(job);

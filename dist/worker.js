@@ -95,7 +95,12 @@ class Worker {
             result = await processor(this._currentJob);
         }
         catch (error) {
-            await this._currentJob.setStateToFailure(error);
+            if (error instanceof Error) {
+                await this._currentJob.setStateToFailure(error);
+            }
+            else {
+                await this._currentJob.setStateToFailure(new Error("Processor is failed, and non error object is thrown."));
+            }
             this._currentJob = null;
             return;
         }

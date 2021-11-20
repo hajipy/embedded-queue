@@ -43,7 +43,7 @@ class Queue extends events_1.EventEmitter {
         const now = new Date();
         const job = new job_1.Job(Object.assign({}, data, {
             queue: this,
-            id: uuid_1.v4(),
+            id: (0, uuid_1.v4)(),
             createdAt: now,
             updatedAt: now,
             logs: [],

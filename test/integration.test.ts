@@ -47,11 +47,11 @@ test("Basic Usage", async () => {
     const completedJob = completeHandler.mock.calls[0][0];
     expect(completedJob.id).toBe(createdJob.id);
     const currentTimestamp = new Date();
-    expect(completedJob.startedAt).not.toBeUndefined();
+    expect(completedJob.startedAt).toBeDefined();
     expect((currentTimestamp.getTime() - completedJob.startedAt.getTime())).toBeLessThan(1000);
-    expect(completedJob.completedAt).not.toBeUndefined();
+    expect(completedJob.completedAt).toBeDefined();
     expect((currentTimestamp.getTime() - completedJob.completedAt.getTime())).toBeLessThan(1000);
-    expect(completedJob.duration).not.toBeUndefined();
+    expect(completedJob.duration).toBeDefined();
     expect(completedJob.duration).toBe(completedJob.completedAt.getTime() - completedJob.startedAt.getTime());
     expect(completedJob.failedAt).toBeUndefined();
     expect(completedJob.state).toBe(State.COMPLETE);
