@@ -30,7 +30,7 @@
     "jest": "27.x",
     "jest-mock-extended": "2.x",
     "ts-jest": "27.x",
-    "typescript": "4.3.x"
+    "typescript": "4.5.x"
   },
   "scripts": {
     "prepare": "tsc",
