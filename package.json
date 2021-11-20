@@ -28,7 +28,7 @@
     "eslint": "7.x",
     "eslint-plugin-jest": "24.x",
     "jest": "27.x",
-    "jest-mock-extended": "1.x",
+    "jest-mock-extended": "2.x",
     "ts-jest": "27.x",
     "typescript": "4.3.x"
   },
