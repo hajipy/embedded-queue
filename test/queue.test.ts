@@ -522,7 +522,7 @@ describe("requestJobForProcessing", () => {
 
         const findJobPromise1 = queue.requestJobForProcessing("type1", () => true);
         await new Promise<void>((resolve) => setTimeout(resolve, 100));
-        expect(waitingRequests["type1"]).not.toBeUndefined();
+        expect(waitingRequests["type1"]).toBeDefined();
         expect(waitingRequests["type1"]).toHaveLength(1);
         expect(waitingRequests["type2"]).toBeUndefined();
 
@@ -534,7 +534,7 @@ describe("requestJobForProcessing", () => {
         const findJobPromise3 = queue.requestJobForProcessing("type2", () => true);
         await new Promise<void>((resolve) => setTimeout(resolve, 100));
         expect(waitingRequests["type1"]).toHaveLength(2);
-        expect(waitingRequests["type2"]).not.toBeUndefined();
+        expect(waitingRequests["type2"]).toBeDefined();
         expect(waitingRequests["type2"]).toHaveLength(1);
 
         await queue.createJob({
